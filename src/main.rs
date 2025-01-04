@@ -24,81 +24,63 @@ fn main() {
     println!("Hello {}!", args.query);
 }
 
-#[derive(Debug)]
-struct Tablet {
-    thing_branch: String,
-    trait_branch: String,
-    thing_is_first: bool,
-    trait_is_first: bool,
-    filename: String,
-    trait_is_regex: bool,
-    querying: bool,
-    eager: bool,
-    accumulating: bool,
-    passthrough: bool,
-}
+fn sow(entry: Value, grain: Value, trait_: &str, thing: &str) -> Value {
+    // let base = entry;
 
-#[derive(Debug)]
-struct Step {
-    is_match: bool,
-    record: Value,
-}
-
-fn step(tablet: Tablet, record: Value, trait_value: &str, thing_value: &str) -> Step {
-    let mut record = match record {
-        Value::Object(m) => {
-            let mut m = m.clone();
-
-            let existing_leaf = m.get(trait_value);
-
-            let leaves = match existing_leaf {
-                None => {
-                    let mut value_new: Value = Value::String(thing_value.to_string());
-                    value_new
-                }
-                Some(Value::Array(vs)) => {
-                    let mut value_new: Value = Value::String(thing_value.to_string());
-                    let mut vs_new: Vec<Value> = vs.clone();
-                    vs_new.extend(vec![value_new]);
-                    Value::Array(vs_new)
-                }
-                Some(v) => {
-                    let mut value_new: Value = Value::String(thing_value.to_string());
-                    let mut vs_new: Value = Value::Array(vec![v.clone(), value_new]);
-                    vs_new
-                }
-            };
-
-            m.insert("event".to_string(), leaves);
-            Value::Object(m)
-        }
-        v => v.clone(),
-    };
-
-    Step {
-        record,
-        is_match: true,
-    }
+    entry.clone()
+    // if base equals thing
+    //   append grain.thing to record.thing
+    // if base equals trait
+    //   append grain.thing to record.thing
+    // if record has trait
+    //   for each item of record.trait
+    //     if item.trait equals grain.trait
+    //       append grain.thing to item.thing
+    // otherwise
+    //   for each field of record
+    //     for each item of record.field
+    //       sow grain to item
 }
 
 #[test]
-fn step_schema_test() {
-    let tablet = Tablet {
-        thing_branch: "_".to_string(),
-        trait_branch: "_".to_string(),
-        thing_is_first: false,
-        trait_is_first: true,
-        filename: "_-_.csv".to_string(),
-        trait_is_regex: false,
-        querying: false,
-        eager: false,
-        accumulating: false,
-        passthrough: false,
-    };
+fn sow_test() {
+    let entry = serde_json::from_str(r#"
+        {
+            "_": "datum",
+            "datum": "value1",
+            "filepath": {
+                "_": "filepath",
+                "filepath": "path/to/1",
+                "moddate": "2001-01-01"
+            },
+            "saydate": "2001-01-01",
+            "sayname": "name1",
+            "actdate": "2001-01-01",
+            "actname": "name1"
+        }
+    "#).unwrap();
 
-    let record = json!({ "_": "_" });
+    let grain = serde_json::from_str(r#"
+        {
+            "_": "datum",
+            "datum": "value1",
+            "saydate": "2001-01-01"
+        }
+    "#).unwrap();
 
-    let result = step(tablet, record, "event", "actname");
+    let result = sow(entry, grain, "datum", "saydate");
 
-    assert_json!(result.record, { "_": "_", "event": "actname" });
+    assert_json!(result, {
+        "_": "datum",
+        "datum": "value1",
+        "filepath": {
+            "_": "filepath",
+            "filepath": "path/to/1",
+            "moddate": "2001-01-01"
+        },
+        "saydate": [ "2001-01-01", "2001-01-01" ],
+        "sayname": "name1",
+        "actdate": "2001-01-01",
+        "actname": "name1",
+    });
 }
