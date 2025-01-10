@@ -14,9 +14,9 @@
     },
     "trait_": "datum",
     "thing": "actdate",
-    "expected": {
+    "expected": [{
         "_": "datum",
         "datum": "value1",
         "actdate": "2001-01-01"
-    }
+    }]
 }

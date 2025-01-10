@@ -1,13 +1,13 @@
 use assert_json_diff::assert_json_eq;
-use std::fs;
 use clap::Parser;
-use std::collections::HashMap;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::convert::From;
 use std::convert::Into;
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use std::fs;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -35,7 +35,7 @@ fn main() {
 struct Entry {
     base: String,
     base_value: String,
-    leaves: HashMap<String, Vec<Entry>>
+    leaves: HashMap<String, Vec<Entry>>,
 }
 
 impl TryFrom<Value> for Entry {
@@ -56,7 +56,7 @@ impl TryFrom<Value> for Entry {
                     Value::Number(_) => panic!(""),
                     Value::String(s) => s.clone(),
                     Value::Array(_) => panic!(""),
-                    Value::Object(_) => panic!("")
+                    Value::Object(_) => panic!(""),
                 };
 
                 let base_value: String = match &v[&base] {
@@ -65,27 +65,27 @@ impl TryFrom<Value> for Entry {
                     Value::Number(_) => panic!(""),
                     Value::String(s) => s.clone(),
                     Value::Array(_) => panic!(""),
-                    Value::Object(_) => panic!("")
+                    Value::Object(_) => panic!(""),
                 };
 
-                let leaves: HashMap<String, Vec<Entry>> = v.iter().map(|(key, val)| {
-                    let leaf = key;
-                    let values = match val {
-                        Value::Null => panic!(""),
-                        Value::Bool(_) => panic!(""),
-                        Value::Number(_) => panic!(""),
-                        Value::String(s) => {
-                            vec![
-                                Entry {
+                let leaves: HashMap<String, Vec<Entry>> = v
+                    .iter()
+                    .map(|(key, val)| {
+                        let leaf = key;
+                        let values = match val {
+                            Value::Null => panic!(""),
+                            Value::Bool(_) => panic!(""),
+                            Value::Number(_) => panic!(""),
+                            Value::String(s) => {
+                                vec![Entry {
                                     base: leaf.to_string(),
                                     base_value: s.to_string(),
                                     leaves: HashMap::new(),
-                                }
-                            ]
-                        },
-                        Value::Array(ss) => {
-                            ss.iter().map(|s| {
-                                match s {
+                                }]
+                            }
+                            Value::Array(ss) => ss
+                                .iter()
+                                .map(|s| match s {
                                     Value::Null => panic!(""),
                                     Value::Bool(_) => panic!(""),
                                     Value::Number(_) => panic!(""),
@@ -100,18 +100,16 @@ impl TryFrom<Value> for Entry {
 
                                         e
                                     }
-                                }
-                            }).collect()
-                        },
-                        Value::Object(_) => {
-                            let e: Entry = val.clone().try_into().unwrap();
-                            vec![
-                                e
-                            ]
-                        }
-                    };
-                    (leaf.clone(), values)
-                }).collect();
+                                })
+                                .collect(),
+                            Value::Object(_) => {
+                                let e: Entry = val.clone().try_into().unwrap();
+                                vec![e]
+                            }
+                        };
+                        (leaf.clone(), values)
+                    })
+                    .collect();
 
                 Entry {
                     base: base,
@@ -162,38 +160,39 @@ impl Into<Value> for Grain {
     }
 }
 
-
 fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
     println!("{}{}", trait_, thing);
 
     if entry.base == thing {
         let items = &entry.leaves[trait_];
 
-        let grains: Vec<Grain> = items.iter().map(|item|
-            Grain {
+        let grains: Vec<Grain> = items
+            .iter()
+            .map(|item| Grain {
                 base: entry.base.clone(),
                 base_value: entry.base_value.clone(),
                 leaf: trait_.to_string(),
                 leaf_value: item.base_value.clone(),
-            }
-        ).collect();
+            })
+            .collect();
 
-        return grains
+        return grains;
     }
 
     if entry.base == trait_ {
         let items = &entry.leaves[thing];
 
-        let grains: Vec<Grain> = items.iter().map(|item|
-            Grain {
+        let grains: Vec<Grain> = items
+            .iter()
+            .map(|item| Grain {
                 base: entry.base.clone(),
                 base_value: entry.base_value.clone(),
                 leaf: thing.to_string(),
                 leaf_value: item.base_value.clone(),
-            }
-        ).collect();
+            })
+            .collect();
 
-        return grains
+        return grains;
     }
 
     vec![]
@@ -209,21 +208,15 @@ struct MowTest {
 
 #[test]
 fn mow_test() {
-    let file = fs::File::open("./src/test.json")
-        .expect("file should open read only");
+    let file = fs::File::open("./src/test.json").expect("file should open read only");
 
-    let test: MowTest = serde_json::from_reader(file)
-        .expect("file should be proper JSON");
+    let test: MowTest = serde_json::from_reader(file).expect("file should be proper JSON");
 
     let entry: Entry = test.initial.try_into().unwrap();
 
-    let result = mow(
-        entry.clone(),
-        &test.trait_,
-        &test.thing,
-    )[0].clone();
+    let result: Vec<Grain> = mow(entry.clone(), &test.trait_, &test.thing);
 
-    let result_json: Value = result.into();
+    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into()).collect();
 
     assert_json_eq!(result_json, test.expected);
 }
