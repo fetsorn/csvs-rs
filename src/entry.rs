@@ -50,6 +50,7 @@ impl TryFrom<Value> for Entry {
 
                 let leaves: HashMap<String, Vec<Entry>> = v
                     .iter()
+                    .filter(|(key, _)| (*key != "_") && (*key.clone() != base))
                     .map(|(key, val)| {
                         let leaf = key;
                         let values = match val {

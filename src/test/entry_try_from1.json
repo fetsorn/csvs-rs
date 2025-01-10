@@ -1,20 +1,18 @@
 {
-    "initial": {
-        "_": "datum",
-        "datum": "value1",
-        "filepath": {
-            "_": "filepath",
-            "filepath": "path/to/1",
-            "moddate": "2001-01-01"
-        },
-        "saydate": "2001-01-01",
-        "sayname": "name1",
-        "actdate": "2001-01-01",
-        "actname": "name1"
-    },
-    "expected": [{
-        "_": "datum",
-        "datum": "value1",
-        "actdate": "2001-01-01"
-    }]
+  "initial": {
+    "_": "datum",
+    "datum": "value1",
+    "saydate": "2001-01-01"
+  },
+  "expected": {
+    "base": "datum",
+    "base_value": "value1",
+    "leaves": {
+      "saydate": [{
+        "base": "saydate",
+        "base_value": "2001-01-01",
+        "leaves": {}
+      }]
+    }
+  }
 }

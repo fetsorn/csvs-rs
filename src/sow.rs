@@ -1,6 +1,6 @@
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
 use super::grain::Grain;
