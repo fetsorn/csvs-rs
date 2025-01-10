@@ -2,7 +2,11 @@ use assert_json::assert_json;
 use clap::Parser;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
-use serde_json::{Value};
+use serde_json::{json, Value};
+use std::convert::From;
+use std::convert::Into;
+use std::convert::TryFrom;
+use std::convert::TryInto;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -33,6 +37,112 @@ struct Entry {
     leaves: HashMap<String, Vec<Entry>>
 }
 
+impl TryFrom<Value> for Entry {
+    type Error = ();
+
+    fn try_from(value: Value) -> Result<Self, Self::Error> {
+        // validate that value is object
+        let r = match value {
+            Value::Null => panic!(""),
+            Value::Bool(_) => panic!(""),
+            Value::Number(_) => panic!(""),
+            Value::String(_) => panic!(""),
+            Value::Array(_) => panic!(""),
+            Value::Object(v) => {
+                let base: String = match &v["_"] {
+                    Value::Null => panic!(""),
+                    Value::Bool(_) => panic!(""),
+                    Value::Number(_) => panic!(""),
+                    Value::String(s) => s.clone(),
+                    Value::Array(_) => panic!(""),
+                    Value::Object(_) => panic!("")
+                };
+
+                let base_value: String = match &v[&base] {
+                    Value::Null => panic!(""),
+                    Value::Bool(_) => panic!(""),
+                    Value::Number(_) => panic!(""),
+                    Value::String(s) => s.clone(),
+                    Value::Array(_) => panic!(""),
+                    Value::Object(_) => panic!("")
+                };
+
+                let leaves: HashMap<String, Vec<Entry>> = v.iter().map(|(key, val)| {
+                    let leaf = key;
+                    let values = match val {
+                        Value::Null => panic!(""),
+                        Value::Bool(_) => panic!(""),
+                        Value::Number(_) => panic!(""),
+                        Value::String(s) => {
+                            vec![
+                                Entry {
+                                    base: leaf.to_string(),
+                                    base_value: s.to_string(),
+                                    leaves: HashMap::new(),
+                                }
+                            ]
+                        },
+                        Value::Array(ss) => {
+                            ss.iter().map(|s| {
+                                match s {
+                                    Value::Null => panic!(""),
+                                    Value::Bool(_) => panic!(""),
+                                    Value::Number(_) => panic!(""),
+                                    Value::String(s) => Entry {
+                                        base: leaf.to_string(),
+                                        base_value: s.to_string(),
+                                        leaves: HashMap::new(),
+                                    },
+                                    Value::Array(_) => panic!(""),
+                                    Value::Object(o) => {
+                                        let e: Entry = s.clone().try_into().unwrap();
+
+                                        e
+                                    }
+                                }
+                            }).collect()
+                        },
+                        Value::Object(s) => {
+                            let e: Entry = val.clone().try_into().unwrap();
+                            vec![
+                                e
+                            ]
+                        }
+                    };
+                    (leaf.clone(), values)
+                }).collect();
+
+                Entry {
+                    base: base,
+                    base_value: base_value,
+                    leaves: leaves,
+                }
+            }
+        };
+
+        Ok(r)
+    }
+}
+
+impl Into<Value> for Entry {
+    fn into(self) -> Value {
+        let mut value: Value = json!({
+            "_": self.base,
+            self.base: self.base_value,
+        });
+
+        for (leaf, items) in self.leaves.iter() {
+            for entry in items {
+                let leaf_value: Value = entry.clone().into();
+
+                value[&leaf] = leaf_value;
+            }
+        }
+
+        value
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Grain {
     base: String,
@@ -40,6 +150,17 @@ struct Grain {
     leaf: String,
     leaf_value: String,
 }
+
+impl Into<Value> for Grain {
+    fn into(self) -> Value {
+        json!({
+            "_": self.base,
+            self.base: self.base_value,
+            self.leaf: self.leaf_value
+        })
+    }
+}
+
 
 fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
     if entry.base == thing {
@@ -78,67 +199,27 @@ fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
 #[test]
 fn mow_test() {
     // TODO convert Value to Entry
-    //let entry_json: Value = serde_json::from_str(r#"
-    //    {
-    //        "_": "datum",
-    //        "datum": "value1",
-    //        "filepath": {
-    //            "_": "filepath",
-    //            "filepath": "path/to/1",
-    //            "moddate": "2001-01-01"
-    //        },
-    //        "saydate": "2001-01-01",
-    //        "sayname": "name1",
-    //        "actdate": "2001-01-01",
-    //        "actname": "name1"
-    //    }
-    //"#).unwrap();
+    let entry_json: Value = serde_json::from_str(r#"
+        {
+            "_": "datum",
+            "datum": "value1",
+            "filepath": {
+                "_": "filepath",
+                "filepath": "path/to/1",
+                "moddate": "2001-01-01"
+            },
+            "saydate": "2001-01-01",
+            "sayname": "name1",
+            "actdate": "2001-01-01",
+            "actname": "name1"
+        }
+    "#).unwrap();
 
-    let entry = Entry {
-        base: "datum".to_string(),
-        base_value: "value1".to_string(),
-        leaves: HashMap::from([
-            ("filepath".to_string(), vec![Entry {
-                base: "filepath".to_string(),
-                base_value: "path/to/1".to_string(),
-                leaves: HashMap::from([
-                    ("moddate".to_string(), vec![Entry {
-                        base: "moddate".to_string(),
-                        base_value: "2001-01-01".to_string(),
-                        leaves: HashMap::new(),
-                    }])
-                ])
-            }]),
-            ("saydate".to_string(), vec![Entry {
-                base: "saydate".to_string(),
-                base_value: "2001-01-01".to_string(),
-                leaves: HashMap::new(),
-            }]),
-            ("sayname".to_string(), vec![Entry {
-                base: "sayname".to_string(),
-                base_value: "name1".to_string(),
-                leaves: HashMap::new(),
-            }]),
-            ("actdate".to_string(), vec![Entry {
-                base: "actdate".to_string(),
-                base_value: "2001-01-01".to_string(),
-                leaves: HashMap::new(),
-            }]),
-            ("actname".to_string(), vec![Entry {
-                base: "sayname".to_string(),
-                base_value: "name1".to_string(),
-                leaves: HashMap::new(),
-            }]),
-        ]),
-    };
+    let entry: Entry = entry_json.try_into().unwrap();
 
     let result = mow(entry.clone(), "datum", "actdate")[0].clone();
 
-    let result_str = serde_json::to_string(&result).unwrap();
-
-    let result_json: Value = serde_json::from_str(&result_str).unwrap();
-
-    // TODO turn result grains to Value here
+    let result_json: Value = result.into();
 
     assert_json!(result_json, {
             "_": "datum",
