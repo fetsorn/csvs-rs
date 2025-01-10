@@ -34,7 +34,7 @@ fn main() {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Entry {
     base: String,
-    base_value: String,
+    base_value: Option<String>,
     leaves: HashMap<String, Vec<Entry>>,
 }
 
@@ -59,13 +59,18 @@ impl TryFrom<Value> for Entry {
                     Value::Object(_) => panic!(""),
                 };
 
-                let base_value: String = match &v[&base] {
+                // TODO handle if no value found for key
+                let base_value: Option<String> = if v.contains_key(&base) {
+                    match &v[&base] {
                     Value::Null => panic!(""),
                     Value::Bool(_) => panic!(""),
                     Value::Number(_) => panic!(""),
-                    Value::String(s) => s.clone(),
+                    Value::String(s) => Some(s.clone()),
                     Value::Array(_) => panic!(""),
                     Value::Object(_) => panic!(""),
+                    }
+                } else {
+                    None
                 };
 
                 let leaves: HashMap<String, Vec<Entry>> = v
@@ -79,7 +84,7 @@ impl TryFrom<Value> for Entry {
                             Value::String(s) => {
                                 vec![Entry {
                                     base: leaf.to_string(),
-                                    base_value: s.to_string(),
+                                    base_value: Some(s.to_string()),
                                     leaves: HashMap::new(),
                                 }]
                             }
@@ -91,7 +96,7 @@ impl TryFrom<Value> for Entry {
                                     Value::Number(_) => panic!(""),
                                     Value::String(s) => Entry {
                                         base: leaf.to_string(),
-                                        base_value: s.to_string(),
+                                        base_value: Some(s.to_string()),
                                         leaves: HashMap::new(),
                                     },
                                     Value::Array(_) => panic!(""),
@@ -147,22 +152,27 @@ struct Grain {
     base: String,
     base_value: String,
     leaf: String,
-    leaf_value: String,
+    leaf_value: Option<String>,
 }
 
 impl Into<Value> for Grain {
     fn into(self) -> Value {
-        json!({
+        match self.leaf_value {
+            Some(leaf_value) => json!({
             "_": self.base,
             self.base: self.base_value,
-            self.leaf: self.leaf_value
+            self.leaf: leaf_value
+        }),
+            None => json!({
+            "_": self.base,
+            self.base: self.base_value
         })
+        }
+
     }
 }
 
 fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
-    println!("{}{}", trait_, thing);
-
     if entry.base == thing {
         let items = &entry.leaves[trait_];
 
@@ -170,9 +180,9 @@ fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
             .iter()
             .map(|item| Grain {
                 base: entry.base.clone(),
-                base_value: entry.base_value.clone(),
+                base_value: entry.base_value.clone().unwrap(),
                 leaf: trait_.to_string(),
-                leaf_value: item.base_value.clone(),
+                leaf_value: Some(item.base_value.clone().unwrap()),
             })
             .collect();
 
@@ -186,9 +196,9 @@ fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
             .iter()
             .map(|item| Grain {
                 base: entry.base.clone(),
-                base_value: entry.base_value.clone(),
+                base_value: entry.base_value.clone().unwrap(),
                 leaf: thing.to_string(),
-                leaf_value: item.base_value.clone(),
+                leaf_value: Some(item.base_value.clone().unwrap()),
             })
             .collect();
 
@@ -204,20 +214,31 @@ fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
         let grains: Vec<Grain> = trunk_items.iter().fold(
             vec![],
             |with_trunk_item, trunk_item| {
-                let branch_items: Vec<Entry> = trunk_item.leaves[thing].clone();
+                if trunk_item.leaves.contains_key(thing) {
+                    let branch_items: Vec<Entry> = trunk_item.leaves[thing].clone();
 
-                // TODO somewhere here return { _: trait, [trait]: trunkValue }
-                //      if branch item does not have base value
-                let trunk_item_grains = branch_items.iter().map(|branch_item| {
-                    Grain {
+                    let trunk_item_grains = branch_items.iter().map(|branch_item| {
+                        Grain {
+                            base: trait_.to_string(),
+                            base_value: trunk_item.base_value.clone().unwrap(),
+                            leaf: thing.to_string(),
+                            leaf_value: Some(branch_item.base_value.clone().unwrap()),
+                        }
+                    }).collect();
+
+                    vec![with_trunk_item, trunk_item_grains].concat()
+                } else {
+                    // TODO somewhere here return { _: trait, [trait]: trunkValue }
+                    //      if branch item does not have base value
+                    let grain = Grain {
                         base: trait_.to_string(),
-                        base_value: trunk_item.base_value.clone(),
+                        base_value: trunk_item.base_value.clone().unwrap(),
                         leaf: thing.to_string(),
-                        leaf_value: branch_item.base_value.clone(),
-                    }
-                }).collect();
+                        leaf_value: None,
+                    };
 
-                vec![with_trunk_item, trunk_item_grains].concat()
+                    vec![with_trunk_item, vec![grain]].concat()
+                }
             }
         );
 
@@ -277,6 +298,22 @@ fn mow_test1() {
 
     let result_json: Vec<Value> = result.iter().map(|i| i.clone().into()).collect();
 
+    assert_json_eq!(result_json, test.expected);
+}
+
+#[test]
+fn mow_test2() {
+    let file = fs::File::open("./src/test2.json").expect("file should open read only");
+
+    let test: MowTest = serde_json::from_reader(file).expect("file should be proper JSON");
+
+    let entry: Entry = test.initial.try_into().unwrap();
+
+    let result: Vec<Grain> = mow(entry.clone(), &test.trait_, &test.thing);
+
+    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into()).collect();
+
+    println!("{:#?}", result_json);
     assert_json_eq!(result_json, test.expected);
 }
 
