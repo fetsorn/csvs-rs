@@ -1,0 +1,22 @@
+{
+    "initial": {
+        "_": "datum",
+        "datum": "value1",
+        "filepath": {
+            "_": "filepath",
+            "filepath": "path/to/1",
+            "moddate": "2001-01-01"
+        },
+        "saydate": "2001-01-01",
+        "sayname": "name1",
+        "actdate": "2001-01-01",
+        "actname": "name1"
+    },
+    "trait": "datum",
+    "thing": "actdate",
+    "expected": {
+        "_": "datum",
+        "datum": "value1",
+        "actdate": "2001-01-01"
+    }
+}

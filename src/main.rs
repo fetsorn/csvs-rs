@@ -1,4 +1,5 @@
-use assert_json::assert_json;
+use assert_json_diff::assert_json_eq;
+use std::fs;
 use clap::Parser;
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
@@ -198,22 +199,13 @@ fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
 
 #[test]
 fn mow_test() {
-    // TODO convert Value to Entry
-    let entry_json: Value = serde_json::from_str(r#"
-        {
-            "_": "datum",
-            "datum": "value1",
-            "filepath": {
-                "_": "filepath",
-                "filepath": "path/to/1",
-                "moddate": "2001-01-01"
-            },
-            "saydate": "2001-01-01",
-            "sayname": "name1",
-            "actdate": "2001-01-01",
-            "actname": "name1"
-        }
-    "#).unwrap();
+    let file = fs::File::open("./src/test.json")
+        .expect("file should open read only");
+
+    let test: Value = serde_json::from_reader(file)
+        .expect("file should be proper JSON");
+
+    let entry_json: Value = test["initial"].clone();
 
     let entry: Entry = entry_json.try_into().unwrap();
 
@@ -221,11 +213,7 @@ fn mow_test() {
 
     let result_json: Value = result.into();
 
-    assert_json!(result_json, {
-            "_": "datum",
-            "datum": "value1",
-            "actdate": "2001-01-01"
-        });
+    assert_json_eq!(result_json, test["expected"]);
 }
 
 //fn sow(entry: Value, grain: Value, trait_: &str, thing: &str) -> Value {
