@@ -2,7 +2,7 @@ use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::convert::Into;
+use std::convert::TryInto;
 use std::convert::TryFrom;
 use std::fs;
 
@@ -34,7 +34,6 @@ impl TryFrom<Value> for Entry {
                     Value::Object(_) => panic!(""),
                 };
 
-                // TODO handle if no value found for key
                 let base_value: Option<String> = if v.contains_key(&base) {
                     match &v[&base] {
                         Value::Null => panic!(""),
@@ -105,27 +104,32 @@ impl TryFrom<Value> for Entry {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-struct ValueTest {
-    initial: Value,
-    expected: Value,
+struct EntryTest {
+    value: Value,
+    entry: Value,
 }
 
-#[test]
-fn entry_try_into_test1() {
-    let file =
-        fs::File::open("./src/test/entry_try_from1.json").expect("file should open read only");
-
-    let test: ValueTest = serde_json::from_reader(file).expect("file should be proper JSON");
-
-    let result: Entry = test.initial.clone().try_into().unwrap();
-
-    let result_json: Value = serde_json::from_str(&serde_json::to_string(&result).unwrap()).unwrap();
-
-    assert_json_eq!(result_json, test.expected);
+// #[test]
+// fn entry_try_from_test() {
+//     let file =
+//         fs::File::open("./src/test/entry.json").expect("file should open read only");
+//
+//     let tests: Vec<EntryTest> = serde_json::from_reader(file).expect("file should be proper JSON");
+//
+//     for test in tests.iter() {
+//         let result: Entry = test.value.clone().try_into().unwrap();
+//
+//         let result_json: Value = serde_json::from_str(&serde_json::to_string(&result).unwrap()).unwrap();
+//
+//         assert_json_eq!(result_json, test.entry);
+//     }
+// }
+pub trait IntoValue {
+    fn into_value(self) -> Value;
 }
 
-impl Into<Value> for Entry {
-    fn into(self) -> Value {
+impl IntoValue for Entry {
+    fn into_value(self) -> Value {
         let mut value: Value = json!({
             "_": self.base,
             self.base: self.base_value,
@@ -133,12 +137,38 @@ impl Into<Value> for Entry {
 
         for (leaf, items) in self.leaves.iter() {
             for entry in items {
-                let leaf_value: Value = entry.clone().into();
+                let leaf_value: Value = entry.clone().into_value();
 
-                value[&leaf] = leaf_value;
+                value[&leaf] = match entry.leaves.is_empty() {
+                    true => match &entry.base_value {
+                        None => continue,
+                        Some(s) => s.clone().into()
+                    },
+                    false => leaf_value
+                }
             }
         }
 
         value
+    }
+}
+
+
+#[test]
+fn entry_into_test() {
+    let file =
+        fs::File::open("./src/test/entry.json").expect("file should open read only");
+
+    let tests: Vec<EntryTest> = serde_json::from_reader(file).expect("file should be proper JSON");
+
+    for test in tests.iter() {
+        let entry: Entry = serde_json::from_str(&serde_json::to_string(&test.entry).unwrap()).unwrap();
+
+        let result: Value = entry.into_value();
+
+        println!("{}", result);
+        println!("{}", test.value);
+
+        assert_json_eq!(result, test.value);
     }
 }

@@ -1,0 +1,94 @@
+[
+  {
+    "value": {
+      "_": "datum",
+      "datum": "value1",
+      "saydate": "2001-01-01"
+    },
+    "entry": {
+      "base": "datum",
+      "base_value": "value1",
+      "leaves": {
+        "saydate": [{
+          "base": "saydate",
+          "base_value": "2001-01-01",
+          "leaves": {}
+        }]
+      }
+    }
+  },
+  {
+    "value": {
+      "_": "datum"
+    },
+    "entry": {
+      "base": "datum",
+      "base_value": null,
+      "leaves": {}
+    }
+  },
+  {
+    "value": {
+      "_": "datum",
+      "datum": "value1",
+      "saydate": { "_": "saydate", "saydate": "2001-01-01" }
+    },
+    "entry": {
+      "base": "datum",
+      "base_value": "value1",
+      "leaves": {
+        "saydate": [{
+          "base": "saydate",
+          "base_value": "2001-01-01",
+          "leaves": {}
+        }]
+      }
+    }
+  },
+  {
+    "value": {
+      "_": "datum",
+      "datum": "value1",
+      "saydate": [{ "_": "saydate", "saydate": "2001-01-01" }]
+    },
+    "entry": {
+      "base": "datum",
+      "base_value": "value1",
+      "leaves": {
+        "saydate": [{
+          "base": "saydate",
+          "base_value": "2001-01-01",
+          "leaves": {}
+        }]
+      }
+    }
+  },
+  {
+    "value": {
+      "_": "datum",
+      "datum": "value1",
+      "saydate": [
+        { "_": "saydate", "saydate": "2001-01-01" },
+        "2002-02-02"
+      ]
+    },
+    "entry": {
+      "base": "datum",
+      "base_value": "value1",
+      "leaves": {
+        "saydate": [
+          {
+            "base": "saydate",
+            "base_value": "2001-01-01",
+            "leaves": {}
+          },
+          {
+            "base": "saydate",
+            "base_value": "2002-02-02",
+            "leaves": {}
+          }
+        ]
+      }
+    }
+  }
+]
