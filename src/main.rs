@@ -95,7 +95,7 @@ impl TryFrom<Value> for Entry {
                                         leaves: HashMap::new(),
                                     },
                                     Value::Array(_) => panic!(""),
-                                    Value::Object(o) => {
+                                    Value::Object(_) => {
                                         let e: Entry = s.clone().try_into().unwrap();
 
                                         e
@@ -103,7 +103,7 @@ impl TryFrom<Value> for Entry {
                                 }
                             }).collect()
                         },
-                        Value::Object(s) => {
+                        Value::Object(_) => {
                             let e: Entry = val.clone().try_into().unwrap();
                             vec![
                                 e
@@ -164,6 +164,8 @@ impl Into<Value> for Grain {
 
 
 fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
+    println!("{}{}", trait_, thing);
+
     if entry.base == thing {
         let items = &entry.leaves[trait_];
 
@@ -197,23 +199,33 @@ fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
     vec![]
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct MowTest {
+    initial: Value,
+    trait_: String,
+    thing: String,
+    expected: Value,
+}
+
 #[test]
 fn mow_test() {
     let file = fs::File::open("./src/test.json")
         .expect("file should open read only");
 
-    let test: Value = serde_json::from_reader(file)
+    let test: MowTest = serde_json::from_reader(file)
         .expect("file should be proper JSON");
 
-    let entry_json: Value = test["initial"].clone();
+    let entry: Entry = test.initial.try_into().unwrap();
 
-    let entry: Entry = entry_json.try_into().unwrap();
-
-    let result = mow(entry.clone(), "datum", "actdate")[0].clone();
+    let result = mow(
+        entry.clone(),
+        &test.trait_,
+        &test.thing,
+    )[0].clone();
 
     let result_json: Value = result.into();
 
-    assert_json_eq!(result_json, test["expected"]);
+    assert_json_eq!(result_json, test.expected);
 }
 
 //fn sow(entry: Value, grain: Value, trait_: &str, thing: &str) -> Value {

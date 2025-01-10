@@ -12,7 +12,7 @@
         "actdate": "2001-01-01",
         "actname": "name1"
     },
-    "trait": "datum",
+    "trait_": "datum",
     "thing": "actdate",
     "expected": {
         "_": "datum",
