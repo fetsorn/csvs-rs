@@ -1,0 +1,15 @@
+[
+  {
+    "value": {
+      "_": "datum",
+      "datum": "value1",
+      "actdate": "2001-01-01"
+    },
+    "grain": {
+      "base": "datum",
+      "base_value": "value1",
+      "leaf": "actdate",
+      "leaf_value": "2001-01-01"
+    }
+  }
+]
