@@ -49,7 +49,7 @@ impl TryFrom<Value> for Entry {
 
                 let leaves: HashMap<String, Vec<Entry>> = v
                     .iter()
-                    .filter(|(key, _)| (*key != "_") && (*key.clone() != base))
+                    .filter(|(key, _)| (*key != "_") && (**key != base))
                     .map(|(key, val)| {
                         let leaf = key;
                         let values = match val {
@@ -132,19 +132,30 @@ impl IntoValue for Entry {
     fn into_value(self) -> Value {
         let mut value: Value = json!({
             "_": self.base,
-            self.base: self.base_value,
         });
+
+        match self.base_value {
+            None => (),
+            Some(s) => value[self.base] = s.into(),
+        }
 
         for (leaf, items) in self.leaves.iter() {
             for entry in items {
-                let leaf_value: Value = entry.clone().into_value();
+                let leaf_value: Value = match entry.leaves.is_empty() {
+                    true => entry.base_value.clone().unwrap().to_string().into(),
+                    false => entry.clone().into_value()
+                };
 
-                value[&leaf] = match entry.leaves.is_empty() {
-                    true => match &entry.base_value {
-                        None => continue,
-                        Some(s) => s.clone().into()
-                    },
-                    false => leaf_value
+                match value.get(&leaf) {
+                    None => value[&leaf] = leaf_value,
+                    Some(i) => match i {
+                        Value::Null => panic!(""),
+                        Value::Bool(_) => panic!(""),
+                        Value::Number(_) => panic!(""),
+                        Value::String(s) => value[&leaf] = vec![s.to_string().into(), leaf_value].into(),
+                        Value::Object(o) => value[&leaf] = vec![o.clone().into(), leaf_value].into(),
+                        Value::Array(vs) => value[&leaf] = vec![vs.clone(), vec![leaf_value]].concat().into(),
+                    }
                 }
             }
         }
@@ -162,12 +173,17 @@ fn entry_into_test() {
     let tests: Vec<EntryTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
     for test in tests.iter() {
-        let entry: Entry = serde_json::from_str(&serde_json::to_string(&test.entry).unwrap()).unwrap();
+        let entry_string = serde_json::to_string(&test.entry).unwrap();
 
-        let result: Value = entry.into_value();
+        println!("es{}", entry_string);
+        let entry: Entry = serde_json::from_str(&entry_string).unwrap();
 
-        println!("{}", result);
-        println!("{}", test.value);
+        println!("e{:?}", entry);
+        let result: Value = entry.clone().into_value();
+
+        println!("r{}", result);
+
+        println!("tv{}", test.value);
 
         assert_json_eq!(result, test.value);
     }
