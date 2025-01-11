@@ -4,6 +4,7 @@ use serde_json::Value;
 use std::fs;
 use super::grain::Grain;
 use super::entry::Entry;
+use crate::into_value::IntoValue;
 
 pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
     if entry.base == thing {
@@ -111,7 +112,7 @@ fn mow_test1() {
 
     let result: Vec<Grain> = mow(entry.clone(), &test.trait_, &test.thing);
 
-    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into()).collect();
+    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into_value()).collect();
 
     assert_json_eq!(result_json, test.expected);
 }
@@ -126,7 +127,7 @@ fn mow_test2() {
 
     let result: Vec<Grain> = mow(entry.clone(), &test.trait_, &test.thing);
 
-    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into()).collect();
+    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into_value()).collect();
 
     assert_json_eq!(result_json, test.expected);
 }
@@ -141,8 +142,7 @@ fn mow_test3() {
 
     let result: Vec<Grain> = mow(entry.clone(), &test.trait_, &test.thing);
 
-    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into()).collect();
+    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into_value()).collect();
 
-    println!("{:#?}", result_json);
     assert_json_eq!(result_json, test.expected);
 }

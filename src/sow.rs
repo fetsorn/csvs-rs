@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fs;
 use super::grain::Grain;
 use super::entry::Entry;
+use crate::into_value::IntoValue;
 
 pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
     // let base = entry;
@@ -97,7 +98,7 @@ fn sow_test1() {
 
     let result: Entry = sow(entry.clone(), grain.clone(), &test.trait_, &test.thing);
 
-    let result_json: Value = result.into();
+    let result_json: Value = result.into_value();
 
     assert_json_eq!(result_json, test.expected);
 }
