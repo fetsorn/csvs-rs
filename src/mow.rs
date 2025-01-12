@@ -1,10 +1,10 @@
+use super::entry::Entry;
+use super::grain::Grain;
+use crate::into_value::IntoValue;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
-use super::grain::Grain;
-use super::entry::Entry;
-use crate::into_value::IntoValue;
 
 // TODO replace trait and thing with grain
 //      but not clear how to then specify base_is_thing

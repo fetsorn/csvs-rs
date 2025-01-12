@@ -1,11 +1,11 @@
+use super::entry::Entry;
+use super::grain::Grain;
+use crate::into_value::IntoValue;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fs;
-use super::grain::Grain;
-use super::entry::Entry;
-use crate::into_value::IntoValue;
 
 // TODO remove trait, thing and use grain.base, grain.leaf
 pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
@@ -23,7 +23,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
                     leaves: entry.leaves.clone(),
                 },
             },
-        }
+        };
     }
 
     //   append grain.thing to record.thing
@@ -38,7 +38,10 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
                 leaves: HashMap::new(),
             };
 
-            leaves.insert(thing.to_string(), vec![leaves[thing].clone(), vec![thing_item]].concat());
+            leaves.insert(
+                thing.to_string(),
+                vec![leaves[thing].clone(), vec![thing_item]].concat(),
+            );
 
             return Entry {
                 base: entry.base.to_string(),
@@ -55,49 +58,65 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
     if record_has_trait {
         let trunk_items: Vec<Entry> = entry.leaves.get(trait_).unwrap().clone();
 
-        let trait_items: Vec<Entry> = trunk_items.iter().map(|trunk_item| {
-            let is_match = trunk_item.base_value == grain.base_value;
+        let trait_items: Vec<Entry> = trunk_items
+            .iter()
+            .map(|trunk_item| {
+                let is_match = trunk_item.base_value == grain.base_value;
 
-            let mut leaves = trunk_item.leaves.clone();
+                let mut leaves = trunk_item.leaves.clone();
 
-            let thing_item = Entry {
-                base: grain.leaf.clone(),
-                base_value: grain.leaf_value.clone(),
-                leaves: HashMap::new(),
-            };
+                let thing_item = Entry {
+                    base: grain.leaf.clone(),
+                    base_value: grain.leaf_value.clone(),
+                    leaves: HashMap::new(),
+                };
 
-            leaves.insert(grain.leaf.to_string(), vec![leaves.get(&grain.leaf).unwrap_or(&vec![]).clone(), vec![thing_item]].concat());
+                leaves.insert(
+                    grain.leaf.to_string(),
+                    vec![
+                        leaves.get(&grain.leaf).unwrap_or(&vec![]).clone(),
+                        vec![thing_item],
+                    ]
+                    .concat(),
+                );
 
-            if is_match {Entry {
-                base: trunk_item.base.clone(),
-                base_value: trunk_item.base_value.clone(),
-                leaves: leaves,
-            }} else {
-                trunk_item.clone()
-            }
-        }).collect();
+                if is_match {
+                    Entry {
+                        base: trunk_item.base.clone(),
+                        base_value: trunk_item.base_value.clone(),
+                        leaves: leaves,
+                    }
+                } else {
+                    trunk_item.clone()
+                }
+            })
+            .collect();
 
         let mut entry_new = entry.clone();
 
         entry_new.leaves.insert(grain.base, trait_items);
 
         return entry_new;
-
     }
 
     // go into objects
-    let leaves_new = entry.leaves.iter().map(|(leaf, leaf_items)| {
-        let leaf_items_new: Vec<Entry> = leaf_items.iter().map(|leaf_item| {
-            sow(leaf_item.clone(), grain.clone(), trait_, thing)
-        }).collect();
+    let leaves_new = entry
+        .leaves
+        .iter()
+        .map(|(leaf, leaf_items)| {
+            let leaf_items_new: Vec<Entry> = leaf_items
+                .iter()
+                .map(|leaf_item| sow(leaf_item.clone(), grain.clone(), trait_, thing))
+                .collect();
 
-        (leaf.clone(), leaf_items_new.clone())
-    }).collect();
+            (leaf.clone(), leaf_items_new.clone())
+        })
+        .collect();
 
     Entry {
         base: entry.base.clone(),
         base_value: entry.base_value.clone(),
-        leaves: leaves_new
+        leaves: leaves_new,
     }
 }
 

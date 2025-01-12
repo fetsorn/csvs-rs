@@ -1,11 +1,11 @@
+use super::into_value::IntoValue;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::convert::TryInto;
 use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::fs;
-use super::into_value::IntoValue;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {
@@ -112,8 +112,7 @@ struct EntryTest {
 
 #[test]
 fn entry_try_from_test() {
-    let file =
-        fs::File::open("./src/test/entry.json").expect("file should open read only");
+    let file = fs::File::open("./src/test/entry.json").expect("file should open read only");
 
     let tests: Vec<EntryTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
@@ -143,7 +142,7 @@ impl IntoValue for Entry {
             for entry in items {
                 let leaf_value: Value = match entry.leaves.is_empty() {
                     true => entry.base_value.clone().unwrap().to_string().into(),
-                    false => entry.clone().into_value()
+                    false => entry.clone().into_value(),
                 };
 
                 match value.get(&leaf) {
@@ -152,10 +151,16 @@ impl IntoValue for Entry {
                         Value::Null => panic!(""),
                         Value::Bool(_) => panic!(""),
                         Value::Number(_) => panic!(""),
-                        Value::String(s) => value[&leaf] = vec![s.to_string().into(), leaf_value].into(),
-                        Value::Object(o) => value[&leaf] = vec![o.clone().into(), leaf_value].into(),
-                        Value::Array(vs) => value[&leaf] = vec![vs.clone(), vec![leaf_value]].concat().into(),
-                    }
+                        Value::String(s) => {
+                            value[&leaf] = vec![s.to_string().into(), leaf_value].into()
+                        }
+                        Value::Object(o) => {
+                            value[&leaf] = vec![o.clone().into(), leaf_value].into()
+                        }
+                        Value::Array(vs) => {
+                            value[&leaf] = vec![vs.clone(), vec![leaf_value]].concat().into()
+                        }
+                    },
                 }
             }
         }
@@ -166,8 +171,7 @@ impl IntoValue for Entry {
 
 #[test]
 fn entry_into_test() {
-    let file =
-        fs::File::open("./src/test/entry.json").expect("file should open read only");
+    let file = fs::File::open("./src/test/entry.json").expect("file should open read only");
 
     let tests: Vec<EntryTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 

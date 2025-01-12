@@ -1,3 +1,4 @@
+use super::into_value::IntoValue;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -5,7 +6,6 @@ use std::collections::HashMap;
 use std::convert::Into;
 use std::convert::TryFrom;
 use std::fs;
-use super::into_value::IntoValue;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Grain {
@@ -54,14 +54,18 @@ impl TryFrom<Value> for Grain {
                     .map(|(key, val)| (key.clone(), val.clone()))
                     .collect();
 
-                if leaves.len() == 0 {return Ok(Grain {
-                    base: base.to_owned(),
-                    base_value: base_value.to_owned(),
-                    leaf: "".to_string(),
-                    leaf_value: None
-                })}
+                if leaves.len() == 0 {
+                    return Ok(Grain {
+                        base: base.to_owned(),
+                        base_value: base_value.to_owned(),
+                        leaf: "".to_string(),
+                        leaf_value: None,
+                    });
+                }
 
-                if leaves.len() > 1 {panic!()};
+                if leaves.len() > 1 {
+                    panic!()
+                };
 
                 let keys: Vec<String> = leaves.keys().cloned().collect();
 
@@ -80,7 +84,7 @@ impl TryFrom<Value> for Grain {
                     base: base.to_owned(),
                     base_value: base_value.to_owned(),
                     leaf: leaf,
-                    leaf_value: leaf_value
+                    leaf_value: leaf_value,
                 })
             }
         }
@@ -111,8 +115,7 @@ struct GrainTest {
 
 #[test]
 fn grain_try_from_test() {
-    let file =
-        fs::File::open("./src/test/grain.json").expect("file should open read only");
+    let file = fs::File::open("./src/test/grain.json").expect("file should open read only");
 
     let tests: Vec<GrainTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
@@ -129,8 +132,7 @@ fn grain_try_from_test() {
 
 #[test]
 fn grain_into_test() {
-    let file =
-        fs::File::open("./src/test/grain.json").expect("file should open read only");
+    let file = fs::File::open("./src/test/grain.json").expect("file should open read only");
 
     let tests: Vec<GrainTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 

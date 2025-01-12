@@ -1,10 +1,10 @@
 use clap::Parser;
-mod sow;
-mod mow;
 mod entry;
-mod into_value;
 mod grain;
+mod into_value;
+mod mow;
 mod schema;
+mod sow;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -27,4 +27,3 @@ fn main() {
 
     println!("Hello {}!", args.query);
 }
-
