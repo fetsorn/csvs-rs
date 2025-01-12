@@ -7,6 +7,7 @@ use super::grain::Grain;
 use super::entry::Entry;
 use crate::into_value::IntoValue;
 
+// TODO remove trait, thing and use grain.base, grain.leaf
 pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
     // let base = entry;
 
@@ -49,32 +50,55 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
         }
     }
 
-    //   append grain.thing to record.thing
-    // if record has trait
-    // let record_has_trait = entry.leaves.keys().any(|v| v == trait_);
+    let record_has_trait = entry.leaves.keys().any(|v| v == trait_);
 
-    // if record_has_trait {}
-    //   for each item of record.trait
-    //     if item.trait equals grain.trait
-    //       append grain.thing to item.thing
-    // otherwise
-    //   for each field of record
-    //     for each item of record.field
-    //       sow grain to item
+    if record_has_trait {
+        let trunk_items: Vec<Entry> = entry.leaves.get(trait_).unwrap().clone();
+
+        let trait_items: Vec<Entry> = trunk_items.iter().map(|trunk_item| {
+            let is_match = trunk_item.base_value == grain.base_value;
+
+            let mut leaves = trunk_item.leaves.clone();
+
+            let thing_item = Entry {
+                base: grain.leaf.clone(),
+                base_value: grain.leaf_value.clone(),
+                leaves: HashMap::new(),
+            };
+
+            leaves.insert(grain.leaf.to_string(), vec![leaves.get(&grain.leaf).unwrap_or(&vec![]).clone(), vec![thing_item]].concat());
+
+            if is_match {Entry {
+                base: trunk_item.base.clone(),
+                base_value: trunk_item.base_value.clone(),
+                leaves: leaves,
+            }} else {
+                trunk_item.clone()
+            }
+        }).collect();
+
+        let mut entry_new = entry.clone();
+
+        entry_new.leaves.insert(grain.base, trait_items);
+
+        return entry_new;
+
+    }
+
     // go into objects
-    //entry
-    //    .leaves
-    //    .iter()
-    //    .fold(vec![], |with_entry, (leaf, leaf_items)| {
-    //        let leaf_grains = leaf_items.iter().fold(vec![], |with_leaf_item, leaf_item| {
-    //            let leaf_item_grains = mow(leaf_item.clone(), trait_, thing);
+    let leaves_new = entry.leaves.iter().map(|(leaf, leaf_items)| {
+        let leaf_items_new: Vec<Entry> = leaf_items.iter().map(|leaf_item| {
+            sow(leaf_item.clone(), grain.clone(), trait_, thing)
+        }).collect();
 
-    //            return vec![with_leaf_item, leaf_item_grains].concat();
-    //        });
+        (leaf.clone(), leaf_items_new.clone())
+    }).collect();
 
-    //        return vec![with_entry, leaf_grains].concat();
-    //    })
-    entry
+    Entry {
+        base: entry.base.clone(),
+        base_value: entry.base_value.clone(),
+        leaves: leaves_new
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -89,6 +113,23 @@ struct SowTest {
 #[test]
 fn sow_test1() {
     let file = fs::File::open("./src/test/sow1.json").expect("file should open read only");
+
+    let test: SowTest = serde_json::from_reader(file).expect("file should be proper JSON");
+
+    let entry: Entry = test.initial.try_into().unwrap();
+
+    let grain: Grain = test.grain.clone().try_into().unwrap();
+
+    let result: Entry = sow(entry.clone(), grain.clone(), &test.trait_, &test.thing);
+
+    let result_json: Value = result.into_value();
+
+    assert_json_eq!(result_json, test.expected);
+}
+
+#[test]
+fn sow_test2() {
+    let file = fs::File::open("./src/test/sow2.json").expect("file should open read only");
 
     let test: SowTest = serde_json::from_reader(file).expect("file should be proper JSON");
 
