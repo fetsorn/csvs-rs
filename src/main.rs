@@ -4,6 +4,7 @@ mod mow;
 mod entry;
 mod into_value;
 mod grain;
+mod schema;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]

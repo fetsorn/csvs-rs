@@ -6,6 +6,9 @@ use super::grain::Grain;
 use super::entry::Entry;
 use crate::into_value::IntoValue;
 
+// TODO replace trait and thing with grain
+//      but not clear how to then specify base_is_thing
+//      since grain's thing is leaf but can't make leaf same as base
 pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
     if entry.base == thing {
         let items = &entry.leaves[trait_];
