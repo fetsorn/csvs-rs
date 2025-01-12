@@ -5,13 +5,19 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
-use std::fs;
+use std::{fmt, fs};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Entry {
     pub base: String,
     pub base_value: Option<String>,
     pub leaves: HashMap<String, Vec<Entry>>,
+}
+
+impl fmt::Display for Entry {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.clone().into_value().to_string())
+    }
 }
 
 impl TryFrom<Value> for Entry {
@@ -101,6 +107,32 @@ impl TryFrom<Value> for Entry {
         };
 
         Ok(r)
+    }
+}
+
+impl TryFrom<String> for Entry {
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        let value_json: Value = match serde_json::from_str(&value) {
+            Ok(v) => v,
+            Err(_) => return Err(()),
+        };
+
+        value_json.try_into()
+    }
+}
+
+impl TryFrom<&str> for Entry {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let value_json: Value = match serde_json::from_str(value) {
+            Ok(v) => v,
+            Err(_) => return Err(()),
+        };
+
+        value_json.try_into()
     }
 }
 

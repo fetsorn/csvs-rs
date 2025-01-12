@@ -8,13 +8,13 @@ use std::convert::TryFrom;
 use std::fs;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Leaves(Vec<String>);
+pub struct Leaves(pub Vec<String>);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Trunks(Vec<String>);
+pub struct Trunks(pub Vec<String>);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Schema(HashMap<String, (Trunks, Leaves)>);
+pub struct Schema(pub HashMap<String, (Trunks, Leaves)>);
 
 impl TryFrom<Entry> for Schema {
     type Error = ();
