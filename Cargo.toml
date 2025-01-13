@@ -9,6 +9,7 @@ edition = "2021"
 assert-json-diff = "2.0.2"
 async-stream = "0.3.6"
 clap = { version = "4.5.19", features = ["derive"] }
+csv = "1.3.1"
 dir-diff = "0.3.3"
 futures-core = "0.3.31"
 futures-util = "0.3.31"

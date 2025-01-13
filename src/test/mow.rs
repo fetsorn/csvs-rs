@@ -13,7 +13,7 @@ struct MowTest {
     initial: String,
     trait_: String,
     thing: String,
-    expected: String,
+    expected: Vec<String>,
 }
 
 #[test]
@@ -29,7 +29,9 @@ fn mow_test() {
 
         let result_json: Vec<Value> = result.iter().map(|i| i.clone().into_value()).collect();
 
-        let expected_json: Value = read_record(&test.expected);
+        let expected_json: Vec<Value> = test.expected.iter().map(|grain| {
+            read_record(grain)
+        }).collect();
 
         assert_json_eq!(result_json, expected_json);
     }

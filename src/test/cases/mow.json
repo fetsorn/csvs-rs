@@ -3,18 +3,18 @@
     "initial": "record2001",
     "trait_": "datum",
     "thing": "actdate",
-    "expected": "grain2001_mow"
+    "expected": [ "grain2001" ]
   },
   {
     "initial": "record_array",
     "trait_": "export1_tag",
     "thing": "export1_channel",
-    "expected": "grain_array_mow"
+    "expected": [ "grain_channel1", "grain_channel2" ]
   },
   {
     "initial": "record_mow_empty",
     "trait_": "export1_tag",
     "thing": "export1_channel",
-    "expected": "grain_empty"
+    "expected": [ "grain_empty" ]
   }
 ]
