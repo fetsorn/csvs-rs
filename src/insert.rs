@@ -80,12 +80,7 @@ fn insert_record_stream<S: Stream<Item = Entry>>(input: S) -> impl Stream<Item =
     }
 }
 
-pub async fn insert_record(path: &str, query: &str) -> Vec<Entry> {
-    // parse query to Entry
-    let query: Entry = query.try_into().unwrap();
-
-    println!("{}", query);
-
+pub async fn insert_record(path: &str, query: Entry) -> Vec<Entry> {
     let mut entries = vec![];
 
     let readable_stream = stream! {

@@ -1,11 +1,6 @@
 use super::entry::Entry;
 use super::grain::Grain;
-use crate::into_value::IntoValue;
-use assert_json_diff::assert_json_eq;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::collections::HashMap;
-use std::fs;
 
 // TODO remove trait, thing and use grain.base, grain.leaf
 pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
@@ -118,47 +113,4 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
         base_value: entry.base_value.clone(),
         leaves: leaves_new,
     }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct SowTest {
-    initial: Value,
-    grain: Value,
-    trait_: String,
-    thing: String,
-    expected: Value,
-}
-
-#[test]
-fn sow_test1() {
-    let file = fs::File::open("./src/test/sow1.json").expect("file should open read only");
-
-    let test: SowTest = serde_json::from_reader(file).expect("file should be proper JSON");
-
-    let entry: Entry = test.initial.try_into().unwrap();
-
-    let grain: Grain = test.grain.clone().try_into().unwrap();
-
-    let result: Entry = sow(entry.clone(), grain.clone(), &test.trait_, &test.thing);
-
-    let result_json: Value = result.into_value();
-
-    assert_json_eq!(result_json, test.expected);
-}
-
-#[test]
-fn sow_test2() {
-    let file = fs::File::open("./src/test/sow2.json").expect("file should open read only");
-
-    let test: SowTest = serde_json::from_reader(file).expect("file should be proper JSON");
-
-    let entry: Entry = test.initial.try_into().unwrap();
-
-    let grain: Grain = test.grain.clone().try_into().unwrap();
-
-    let result: Entry = sow(entry.clone(), grain.clone(), &test.trait_, &test.thing);
-
-    let result_json: Value = result.into_value();
-
-    assert_json_eq!(result_json, test.expected);
 }

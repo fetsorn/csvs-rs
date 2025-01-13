@@ -1,0 +1,17 @@
+branch,cognate
+branch,description_en
+branch,description_ru
+branch,task
+branch,trunk
+event,actdate
+event,actname
+event,category
+event,datum
+event,file
+event,privacy
+event,saydate
+event,sayname
+file,fileext
+file,filehash
+file,filename
+person,parent

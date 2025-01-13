@@ -6,6 +6,7 @@ mod into_value;
 mod mow;
 mod schema;
 mod sow;
+mod test;
 use insert::insert_record;
 use std::env;
 
@@ -44,7 +45,11 @@ async fn main() {
 
     match &cli.command {
         Some(Commands::Insert { query }) => {
-            let entries = insert_record(&path, query).await;
+            let query_json: serde_json::Value = serde_json::from_str(query).unwrap();
+
+            let query_record: entry::Entry = query_json.try_into().unwrap();
+
+            let entries = insert_record(&path, query_record).await;
 
             for entry in entries.iter() {
                 println!("Hello {}!", entry);

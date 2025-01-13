@@ -1,0 +1,37 @@
+{
+  "_": "_",
+  "datum": [
+    "actdate",
+    "actname",
+    "saydate",
+    "sayname",
+    "privacy",
+    "tag",
+    "filepath",
+    "export_tags"
+  ],
+  "filepath": [
+    "moddate",
+    "filehash",
+    "filetype",
+    "filesize",
+    "pathrule"
+  ],
+  "export_tags": [
+    "export1_tag",
+    "export2_tag"
+  ],
+  "export1_tag": [
+    "export1_channel",
+    "export1_key"
+  ],
+  "export2_tag": [
+    "export2_username",
+    "export2_password",
+    "export2_tag_description"
+  ],
+  "export2_tag_description": [
+    "export2_tag_description_text1",
+    "export2_tag_description_text2"
+  ]
+}

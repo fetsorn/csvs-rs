@@ -1,0 +1,16 @@
+_evenor,Type of entity for use in evenor
+_en,Description of entity in English language
+_ru,Description of entity in Russian language
+event,Event
+datum,Description of the event
+actdate,Date of the event
+actname,Name of the person in the event
+saydate,Date of event
+sayname,Name of the person who made the event
+privacy,Privacy level
+tag,Category
+files,Digital assets
+file,Digital asset
+fileext,Extension of the file
+filehash,Hashsum of the file
+filename,Path to a digital asset

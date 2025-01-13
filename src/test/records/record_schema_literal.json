@@ -1,0 +1,20 @@
+{
+  "_": "_",
+  "datum": [
+    "actdate",
+    "actname",
+    "saydate",
+    "sayname",
+    "privacy",
+    "tag",
+    "filepath"
+  ],
+  "filepath": [
+    "moddate",
+    "filehash",
+    "filetype",
+    "filesize",
+    "pathrule"
+  ],
+  "person": "parent"
+}

@@ -1,0 +1,16 @@
+_,_evenor
+_,_en
+_,_ru
+event,actdate
+event,actname
+event,saydate
+event,sayname
+event,privacy
+event,tag
+event,file
+event,datum
+file,fileext
+file,filehash
+file,filename
+event,event
+person,parent

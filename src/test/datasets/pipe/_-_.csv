@@ -1,0 +1,12 @@
+datum,actdate
+datum,actname
+datum,saydate
+datum,sayname
+datum,privacy
+datum,tag
+datum,filepath
+filepath,moddate
+filepath,filehash
+filepath,filetype
+filepath,filesize
+filepath,pathrule

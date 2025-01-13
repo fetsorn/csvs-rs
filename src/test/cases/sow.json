@@ -1,0 +1,16 @@
+[
+  {
+    "initial": "record2001",
+    "grain": "grain2001",
+    "trait_": "datum",
+    "thing": "actdate",
+    "expected": "record2001_sow"
+  },
+  {
+    "initial": "record_array",
+    "grain": "grain_array",
+    "trait_": "export_tags",
+    "thing": "export1_tag",
+    "expected": "record_array_sow"
+  }
+]

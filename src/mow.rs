@@ -1,10 +1,5 @@
 use super::entry::Entry;
 use super::grain::Grain;
-use crate::into_value::IntoValue;
-use assert_json_diff::assert_json_eq;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::fs;
 
 // TODO replace trait and thing with grain
 //      but not clear how to then specify base_is_thing
@@ -95,57 +90,4 @@ pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
 
             return vec![with_entry, leaf_grains].concat();
         })
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct MowTest {
-    initial: Value,
-    trait_: String,
-    thing: String,
-    expected: Value,
-}
-
-#[test]
-fn mow_test1() {
-    let file = fs::File::open("./src/test/mow1.json").expect("file should open read only");
-
-    let test: MowTest = serde_json::from_reader(file).expect("file should be proper JSON");
-
-    let entry: Entry = test.initial.try_into().unwrap();
-
-    let result: Vec<Grain> = mow(entry.clone(), &test.trait_, &test.thing);
-
-    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into_value()).collect();
-
-    assert_json_eq!(result_json, test.expected);
-}
-
-#[test]
-fn mow_test2() {
-    let file = fs::File::open("./src/test/mow2.json").expect("file should open read only");
-
-    let test: MowTest = serde_json::from_reader(file).expect("file should be proper JSON");
-
-    let entry: Entry = test.initial.try_into().unwrap();
-
-    let result: Vec<Grain> = mow(entry.clone(), &test.trait_, &test.thing);
-
-    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into_value()).collect();
-
-    assert_json_eq!(result_json, test.expected);
-}
-
-#[test]
-fn mow_test3() {
-    let file = fs::File::open("./src/test/mow3.json").expect("file should open read only");
-
-    let test: MowTest = serde_json::from_reader(file).expect("file should be proper JSON");
-
-    let entry: Entry = test.initial.try_into().unwrap();
-
-    let result: Vec<Grain> = mow(entry.clone(), &test.trait_, &test.thing);
-
-    let result_json: Vec<Value> = result.iter().map(|i| i.clone().into_value()).collect();
-
-    assert_json_eq!(result_json, test.expected);
 }
