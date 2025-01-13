@@ -1,6 +1,6 @@
-use crate::into_value::IntoValue;
-use crate::grain::Grain;
 use super::read_record;
+use crate::grain::Grain;
+use crate::into_value::IntoValue;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -8,7 +8,6 @@ use std::collections::HashMap;
 use std::convert::Into;
 use std::convert::TryFrom;
 use std::fs;
-
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct GrainTest {

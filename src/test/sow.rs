@@ -1,8 +1,8 @@
+use super::read_record;
 use crate::entry::Entry;
 use crate::grain::Grain;
-use crate::sow::sow;
 use crate::into_value::IntoValue;
-use super::read_record;
+use crate::sow::sow;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -25,7 +25,6 @@ fn sow_test() {
     let tests: Vec<SowTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
     for test in tests.iter() {
-
         let entry: Entry = read_record(&test.initial).clone().try_into().unwrap();
 
         let grain: Grain = read_record(&test.grain).clone().try_into().unwrap();

@@ -1,14 +1,13 @@
-use crate::entry::Entry;
-use crate::schema::{Schema, Leaves, Trunks, find_crown};
-use assert_json_diff::assert_json_eq;
 use super::read_record;
+use crate::entry::Entry;
+use crate::schema::{find_crown, Leaves, Schema, Trunks};
+use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::convert::Into;
 use std::convert::TryFrom;
 use std::fs;
-
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SchemaTest {

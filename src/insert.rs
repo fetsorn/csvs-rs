@@ -1,25 +1,27 @@
 use super::entry::Entry;
-use super::schema::{Schema, Trunks, Leaves};
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
+use super::schema::{Leaves, Schema, Trunks};
 use async_stream::stream;
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Tablet {
-    pub filename: String
+    pub filename: String,
 }
 
 async fn sort_file(filename: &str) {
-  return;
+    return;
 }
 
 fn plan_insert(schema: Schema, query: Entry) -> Vec<Tablet> {
-   vec![]
+    vec![Tablet {
+        filename: "datum-actdate.csv".to_string(),
+    }]
 }
-
 
 fn insert_tablet<S: Stream<Item = Entry>>(input: S, tablet: Tablet) -> impl Stream<Item = Entry> {
     stream! {
@@ -80,7 +82,7 @@ fn insert_record_stream<S: Stream<Item = Entry>>(input: S) -> impl Stream<Item =
     }
 }
 
-pub async fn insert_record(path: &str, query: Entry) -> Vec<Entry> {
+pub async fn insert_record(path: PathBuf, query: Entry) -> Vec<Entry> {
     let mut entries = vec![];
 
     let readable_stream = stream! {

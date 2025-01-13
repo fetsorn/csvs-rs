@@ -97,4 +97,3 @@ pub fn find_crown(schema: &Schema, base: &str) -> Vec<String> {
         .cloned()
         .collect()
 }
-

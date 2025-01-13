@@ -33,15 +33,11 @@ async fn main() {
     let cli = Cli::parse();
 
     let path = match cli.path {
-        Some(p) => p,
-        None => env::current_dir()
-            .unwrap()
-            .into_os_string()
-            .into_string()
-            .unwrap(),
+        Some(p) => std::path::Path::new(&p).to_owned(),
+        None => env::current_dir().unwrap(),
     };
 
-    println!("Hello {}!", path);
+    println!("Hello {}!", path.display());
 
     match &cli.command {
         Some(Commands::Insert { query }) => {
@@ -49,7 +45,7 @@ async fn main() {
 
             let query_record: entry::Entry = query_json.try_into().unwrap();
 
-            let entries = insert_record(&path, query_record).await;
+            let entries = insert_record(path, query_record).await;
 
             for entry in entries.iter() {
                 println!("Hello {}!", entry);

@@ -1,8 +1,7 @@
 [
   {
-    "initial": {},
-    "query": {},
-    "expected": {},
-    "path": ""
+    "initial": "default",
+    "query": "record2001",
+    "expected": "duplicate"
   }
 ]

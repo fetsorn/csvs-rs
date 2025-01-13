@@ -12,7 +12,8 @@ pub fn read_record(path: &str) -> Value {
 
     let entry_file = fs::File::open(entry_path).expect("file should open read only");
 
-    let entry_json: Value = serde_json::from_reader(entry_file).expect("file should be proper JSON");
+    let entry_json: Value =
+        serde_json::from_reader(entry_file).expect("file should be proper JSON");
 
     entry_json
 }
