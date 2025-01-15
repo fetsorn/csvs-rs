@@ -45,7 +45,7 @@ async fn main() {
 
             let query_record: types::entry::Entry = query_json.try_into().unwrap();
 
-            let entries = insert_record(path, query_record).await;
+            let entries = insert_record(path, vec![query_record]).await;
 
             for entry in entries.iter() {
                 println!("Hello {}!", entry);

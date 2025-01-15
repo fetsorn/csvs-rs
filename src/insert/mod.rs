@@ -1,5 +1,6 @@
 use crate::types::entry::Entry;
 use crate::schema::{Leaves, Schema, Trunks};
+use crate::select::select_schema;
 use async_stream::stream;
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
@@ -31,28 +32,9 @@ fn insert_tablet<S: Stream<Item = Entry>>(input: S, tablet: Tablet) -> impl Stre
     }
 }
 
-fn insert_record_stream<S: Stream<Item = Entry>>(input: S) -> impl Stream<Item = Entry> {
+async fn insert_record_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> impl Stream<Item = Entry> {
     // TODO rewrite to select
-    let schema = Schema(HashMap::from([
-        (
-            "datum".to_string(),
-            (
-                Trunks(vec![]),
-                Leaves(vec![
-                    "actdate".to_string(),
-                    "name".to_string()]
-                ),
-            ),
-        ),
-        (
-            "date".to_string(),
-            (Trunks(vec!["datum".to_string()]), Leaves(vec![])),
-        ),
-        (
-            "name".to_string(),
-            (Trunks(vec!["datum".to_string()]), Leaves(vec![])),
-        ),
-    ]));
+    let schema = select_schema(path.clone()).await;
 
     let mut strategy = vec![];
 
@@ -85,14 +67,16 @@ fn insert_record_stream<S: Stream<Item = Entry>>(input: S) -> impl Stream<Item =
     }
 }
 
-pub async fn insert_record(path: PathBuf, query: Entry) -> Vec<Entry> {
+pub async fn insert_record(path: PathBuf, query: Vec<Entry>) -> Vec<Entry> {
     let mut entries = vec![];
 
     let readable_stream = stream! {
-        yield query;
+        for q in query {
+            yield q;
+        }
     };
 
-    let s = insert_record_stream(readable_stream);
+    let s = insert_record_stream(readable_stream, path).await;
 
     pin_mut!(s); // needed for iteration
 

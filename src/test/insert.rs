@@ -51,7 +51,7 @@ async fn insert_test() {
         // parse query to Entry
         let query: Entry = read_record(&test.query).clone().try_into().unwrap();
 
-        insert_record(temp_path.path().to_owned(), query).await;
+        insert_record(temp_path.path().to_owned(), vec![query]).await;
 
         if dir_diff::is_different(temp_path.path(), expected_path).unwrap() {
             for entry in fs::read_dir(temp_path.path()).unwrap() {
