@@ -1,5 +1,5 @@
-use super::entry::Entry;
-use super::grain::Grain;
+use crate::types::entry::Entry;
+use crate::types::grain::Grain;
 
 // TODO replace trait and thing with grain
 //      but not clear how to then specify base_is_thing

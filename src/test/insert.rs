@@ -1,5 +1,5 @@
 use super::read_record;
-use crate::entry::Entry;
+use crate::types::entry::Entry;
 use assert_json_diff::assert_json_eq;
 use serde_json::Value;
 use temp_dir::TempDir;

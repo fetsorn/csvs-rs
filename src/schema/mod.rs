@@ -1,4 +1,4 @@
-use super::entry::Entry;
+use crate::types::entry::Entry;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;

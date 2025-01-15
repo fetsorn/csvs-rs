@@ -1,6 +1,6 @@
 use super::read_record;
-use crate::entry::Entry;
-use crate::into_value::IntoValue;
+use crate::types::entry::Entry;
+use crate::types::into_value::IntoValue;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

@@ -1,5 +1,5 @@
-use super::entry::Entry;
-use super::schema::{Leaves, Schema, Trunks};
+use crate::types::entry::Entry;
+use crate::schema::{Leaves, Schema, Trunks};
 use async_stream::stream;
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
@@ -38,7 +38,10 @@ fn insert_record_stream<S: Stream<Item = Entry>>(input: S) -> impl Stream<Item =
             "datum".to_string(),
             (
                 Trunks(vec![]),
-                Leaves(vec!["date".to_string(), "name".to_string()]),
+                Leaves(vec![
+                    "actdate".to_string(),
+                    "name".to_string()]
+                ),
             ),
         ),
         (

@@ -1,8 +1,8 @@
 use super::read_record;
-use crate::entry::Entry;
-use crate::grain::Grain;
-use crate::into_value::IntoValue;
-use crate::mow::mow;
+use crate::types::entry::Entry;
+use crate::types::grain::Grain;
+use crate::types::into_value::IntoValue;
+use crate::record::mow::mow;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
