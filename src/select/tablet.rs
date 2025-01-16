@@ -1,4 +1,5 @@
 use crate::types::entry::Entry;
+use crate::types::line::Line;
 use crate::schema::{Leaves, Schema, Trunks};
 use super::strategy::Tablet;
 use async_stream::stream;
@@ -10,12 +11,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::fs::File;
 use std::io::{self, prelude::*, BufReader};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct Line {
-    key: String,
-    value: String
-}
 
 fn select_schema_line_stream<S: Stream<Item = Line>>(input: S, entry: Entry) -> impl Stream<Item = Entry> {
     stream! {
