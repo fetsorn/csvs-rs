@@ -1,6 +1,7 @@
 mod entry;
 mod grain;
 mod insert;
+mod delete;
 mod mow;
 mod schema;
 mod sow;

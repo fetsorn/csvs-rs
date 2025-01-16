@@ -1,0 +1,12 @@
+[
+  {
+    "initial": "default",
+    "query": "record2003_unedited",
+    "expected": "deleted"
+  },
+  {
+    "initial": "array",
+    "query": "record_export1_tag",
+    "expected": "deleted_leaf"
+  }
+]

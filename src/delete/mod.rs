@@ -1,0 +1,140 @@
+use crate::types::entry::Entry;
+use crate::schema::{find_crown, Trunks, Leaves};
+use temp_dir::TempDir;
+use std::io::prelude::*;
+use std::fs::{File, rename};
+use text_file_sort::sort::Sort;
+use crate::types::grain::Grain;
+use crate::types::line::Line;
+use crate::schema::Schema;
+use crate::select::select_schema;
+use crate::record::mow::mow;
+use async_stream::stream;
+use futures_core::stream::{Stream, BoxStream};
+use futures_util::pin_mut;
+use futures_util::stream::StreamExt;
+use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
+use std::fs::OpenOptions;
+use std::fs;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct Tablet {
+    pub filename: String,
+    pub trait_: String,
+    pub trait_is_first: bool,
+}
+
+fn plan_delete(schema: Schema, query: Entry) -> Vec<Tablet> {
+    let (Trunks(trunks), Leaves(leaves)) = schema.0.get(&query.base).unwrap();
+
+    let trunk_tablets: Vec<Tablet> = trunks.iter().map(|trunk| {
+        Tablet {
+            filename: format!("{}-{}.csv", trunk, query.base),
+            trait_: query.clone().base_value.unwrap(),
+            trait_is_first: false,
+        }
+    }).collect();
+
+    let leaf_tablets = leaves.iter().map(|leaf| {
+        Tablet {
+            filename: format!("{}-{}.csv", query.base, leaf),
+            trait_: query.clone().base_value.unwrap(),
+            trait_is_first: true,
+        }
+    }).collect();
+
+    vec![trunk_tablets, leaf_tablets].concat()
+}
+
+async fn delete_tablet(path: PathBuf, tablet: Tablet) {
+    let filepath = path.join(&tablet.filename);
+
+    match fs::metadata(filepath.clone()) {
+        Err(_) => return,
+        Ok(m) => if m.len() == 0 {
+            return
+        } else {
+        }
+    }
+
+    let file = File::open(filepath.clone()).unwrap();
+
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_reader(file);
+
+    let temp_path = TempDir::new().unwrap();
+
+    let output = temp_path.as_ref().join(filepath.file_name().unwrap());
+
+    let temp_file = File::create(output.clone()).unwrap();
+
+    let mut wtr = csv::WriterBuilder::new()
+        .has_headers(false)
+        .from_writer(temp_file);
+
+    for result in rdr.deserialize() {
+        let line: Line = result.unwrap();
+
+        let trait_ = if tablet.trait_is_first {
+            line.clone().key
+        } else {
+            line.clone().value
+        };
+
+        let is_match = trait_ == tablet.trait_;
+
+        if !is_match {
+            wtr.serialize(line).unwrap();
+
+            wtr.flush().unwrap();
+        }
+    }
+
+    // if empty
+    match fs::metadata(output.clone()) {
+        Err(_) => fs::remove_file(filepath).unwrap(),
+        Ok(m) => if m.len() == 0 {
+            fs::remove_file(filepath).unwrap();
+        } else {
+            fs::rename(output, filepath).unwrap();
+        }
+    }
+}
+
+async fn delete_record_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> impl Stream<Item = Entry> {
+    let schema = select_schema(path.clone()).await;
+
+    stream! {
+        for await query in input {
+            let strategy = plan_delete(schema.clone(), query.clone());
+
+            for tablet in strategy.clone() {
+                delete_tablet(path.clone(), tablet).await;
+            }
+
+            yield query;
+        }
+    }
+}
+
+pub async fn delete_record(path: PathBuf, query: Vec<Entry>) -> Vec<Entry> {
+    let mut entries = vec![];
+
+    let readable_stream = stream! {
+        for q in query {
+            yield q;
+        }
+    };
+
+    let s = delete_record_stream(readable_stream, path).await;
+
+    pin_mut!(s); // needed for iteration
+
+    while let Some(entry) = s.next().await {
+        entries.push(entry);
+    }
+
+    entries
+}
