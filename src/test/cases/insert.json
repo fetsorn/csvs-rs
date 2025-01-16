@@ -3,5 +3,15 @@
     "initial": "default",
     "query": "record2001",
     "expected": "duplicate"
+  },
+  {
+    "initial": "default",
+    "query": "record2001_edited",
+    "expected": "duplicate_leaf"
+  },
+  {
+    "initial": "default",
+    "query": "record_added",
+    "expected": "added"
   }
 ]
