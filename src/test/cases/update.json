@@ -1,0 +1,12 @@
+[
+  {
+    "initial": "default",
+    "query": "record2001",
+    "expected": "default"
+  },
+  {
+    "initial": "default",
+    "query": "record2003_edited",
+    "expected": "edited"
+  }
+]

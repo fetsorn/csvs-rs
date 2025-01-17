@@ -87,10 +87,10 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
 
         if !is_match {
             wtr.serialize(line).unwrap();
-
-            wtr.flush().unwrap();
         }
     }
+
+    wtr.flush().unwrap();
 
     // if empty
     match fs::metadata(output.clone()) {
