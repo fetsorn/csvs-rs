@@ -63,6 +63,10 @@ async fn update_test() {
                 } else {
                     let received = fs::read_to_string(entry.path()).unwrap();
 
+                     // println!("{}", entry.path().clone().display());
+
+                     // println!("{}", fs::read_to_string(expected_path.join(entry.file_name()).clone()).unwrap());
+
                     let expected =
                         fs::read_to_string(expected_path.join(entry.file_name())).unwrap();
 

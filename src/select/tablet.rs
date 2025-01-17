@@ -48,11 +48,15 @@ pub fn select_tablet<S: Stream<Item = Entry>>(input: S, path: PathBuf, tablet: T
 
             // for every line from tablet.filename
             let line_stream = stream! {
+                if std::fs::metadata(filepath.clone()).is_err() {
+                    return;
+                }
+
                 let file = File::open(filepath).unwrap();
 
                 let mut rdr = csv::ReaderBuilder::new()
-                    .has_headers(false)
-                    .from_reader(file);
+                        .has_headers(false)
+                        .from_reader(file);
 
                 for result in rdr.deserialize() {
                     let record: Line = result.unwrap();

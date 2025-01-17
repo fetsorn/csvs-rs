@@ -64,7 +64,17 @@ fn plan_update(schema: Schema, query: Entry) -> Vec<Tablet> {
 
 fn update_schema_line_stream(entry: Entry) -> impl Stream<Item = Line> {
     stream! {
-        for (trunk, leaves) in entry.leaves {
+        let mut keys: Vec<String> = entry.leaves.keys().cloned().collect();
+
+        keys.sort();
+
+        for trunk in keys {
+            let mut leaves: Vec<Entry> = entry.leaves.get(&trunk).cloned().unwrap();
+
+            leaves.sort_by(|a, b| a.base.cmp(&b.base).then(
+                a.clone().base_value.unwrap().cmp(&b.clone().base_value.unwrap())
+            ));
+
             for leaf in leaves {
                 yield Line {
                     key: trunk.clone(),
@@ -115,15 +125,15 @@ fn update_line_stream<S: Stream<Item = Line>>(input: S, entry: Entry, tablet: Ta
             let fst_is_new = state_intermediary.clone().fst.is_none() || state_intermediary.clone().fst.unwrap() != line.key;
 
             if state_intermediary.is_match && fst_is_new {
-                for value in values.get(&line.key).unwrap_or(&vec![]) {
-                    println!("AAA");
+                for value in values.get(&state_intermediary.clone().fst.unwrap()).unwrap_or(&vec![]) {
+                    // println!("AAA, {}, {}", state_intermediary.clone().fst.unwrap(), value.clone());
                     yield Line {
-                        key: line.clone().key,
+                        key: state_intermediary.clone().fst.unwrap(),
                         value: value.clone()
                     };
                 }
 
-                keys = keys.clone().iter().filter(|k| **k != line.key).cloned().collect();
+                keys = keys.clone().iter().filter(|k| **k != state_intermediary.clone().fst.unwrap()).cloned().collect();
             }
 
             if fst_is_new {
@@ -140,8 +150,9 @@ fn update_line_stream<S: Stream<Item = Line>>(input: S, entry: Entry, tablet: Ta
                 });
 
                 for key in keys_between {
+                    // println!("why, {:?}", values.get(&key).unwrap_or(&vec![]));
                     for value in values.get(&key).unwrap_or(&vec![]) {
-                        println!("BBB");
+                        // println!("BBB, {}, {}", key.clone(), value.clone());
                         yield Line {
                             key: key.clone(),
                             value: value.clone()
@@ -155,7 +166,7 @@ fn update_line_stream<S: Stream<Item = Line>>(input: S, entry: Entry, tablet: Ta
             let is_match: bool = keys.contains(&line.key);
 
             if !is_match {
-                // println!("CCC");
+                // println!("CCC, {}, {}", line.clone().key, line.clone().value);
                 yield line.clone();
             }
 
@@ -167,7 +178,7 @@ fn update_line_stream<S: Stream<Item = Line>>(input: S, entry: Entry, tablet: Ta
 
         for key in keys.clone() {
             for value in values.get(&key).unwrap_or(&vec![]) {
-                println!("DDD");
+                // println!("DDD, {}, {}", key.clone(), value.clone());
                 yield Line {
                     key: key.clone(),
                     value: value.clone()
@@ -189,6 +200,8 @@ fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
 
         for result in rdr.deserialize() {
             let line: Line = result.unwrap();
+
+            // println!("ZZZ {:?}", line.clone());
 
             yield line
         }
@@ -230,6 +243,7 @@ fn update_tablet<S: Stream<Item = Entry>>(input: S, path: PathBuf, tablet: Table
 
                 for await line_new in update_stream {
                     wtr.serialize(line_new).unwrap();
+                    wtr.flush().unwrap();
                 }
             } else {
                 let update_stream = update_line_stream(line_stream(filepath.clone()), entry.clone(), tablet.clone());
@@ -237,26 +251,39 @@ fn update_tablet<S: Stream<Item = Entry>>(input: S, path: PathBuf, tablet: Table
                 pin_mut!(update_stream);
 
                 for await line_new in update_stream {
-                    // println!("{:?}", line_new.clone());
+                    //println!("> {:?}", line_new.clone());
                     wtr.serialize(line_new).unwrap();
+                    wtr.flush().unwrap();
+                    //println!("{}", temp_path.clone().display());
+                    //println!("{}", fs::read_to_string(temp_path.clone()).unwrap());
                 }
             }
         }
 
-        wtr.flush().unwrap();
-
-
-
         match fs::metadata(temp_path.clone()) {
+            Err(_) => (),
+            Ok(m) => if m.len() == 0 {
+                if fs::metadata(filepath.clone()).is_ok() {
+                    fs::remove_file(filepath.clone()).unwrap();
+                }
+            } else {
+                println!("zzzz{}", filepath.clone().display());
+
+                if fs::metadata(temp_path.clone()).is_ok() {
+                    println!("{}", fs::read_to_string(temp_path.clone()).unwrap());
+                }
+
+                fs::rename(temp_path, filepath.clone()).unwrap();
+            }
+        }
+
+        match fs::metadata(filepath.clone()) {
             Err(_) => return,
             Ok(m) => if m.len() == 0 {
                 fs::remove_file(filepath).unwrap();
-            } else {
-                println!("{}", temp_path.clone().display());
-                println!("{}", fs::read_to_string(temp_path.clone()).unwrap());
-                fs::rename(temp_path, filepath).unwrap();
             }
         }
+
     }
 }
 
