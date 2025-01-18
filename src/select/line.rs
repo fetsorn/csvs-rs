@@ -15,7 +15,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::{self, prelude::*, BufReader};
 use std::path::PathBuf;
-use {once_cell::sync::Lazy, regex::Regex};
+use regex::Regex;
 
 fn make_state_initial(state: State, tablet: Tablet) -> State {
     // in a querying tablet, set initial entry to the base of the tablet

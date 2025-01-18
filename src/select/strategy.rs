@@ -106,7 +106,7 @@ fn gather_keys(query: Entry) -> Vec<String> {
     let leaves = query
         .leaves
         .keys()
-        .filter(|key| **key != query.clone().base_value.unwrap());
+        .filter(|key| query.base_value.is_none() || **key != query.clone().base_value.unwrap());
 
     leaves.fold(vec![], |with_leaf, leaf| {
         let leaf_values = query.leaves.get(leaf).unwrap();
@@ -133,7 +133,9 @@ pub fn plan_query(schema: Schema, query: Entry) -> Vec<Tablet> {
     queried_branches.sort_by(sort_nesting_ascending(schema.clone()));
 
     let queried_tablets = queried_branches.iter().fold(vec![], |with_branch, branch| {
-        let (Trunks(trunks), _) = schema.0.get(branch).unwrap();
+        let empty = (Trunks(vec![]), Leaves(vec![]));
+
+        let (Trunks(trunks), _) = schema.0.get(branch).unwrap_or(&empty);
 
         let tablets_new: Vec<Tablet> = trunks
             .iter()
@@ -159,7 +161,9 @@ pub fn plan_query(schema: Schema, query: Entry) -> Vec<Tablet> {
 }
 
 pub fn plan_options(schema: Schema, base: String) -> Vec<Tablet> {
-    let (Trunks(trunks), Leaves(leaves)) = schema.0.get(&base).unwrap();
+    let empty = (Trunks(vec![]), Leaves(vec![]));
+
+    let (Trunks(trunks), Leaves(leaves)) = schema.0.get(&base).unwrap_or(&empty);
 
     let trunk_tablets: Vec<Tablet> = trunks
         .iter()
