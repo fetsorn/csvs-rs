@@ -8,10 +8,12 @@
     "entry": {
       "base": "datum",
       "base_value": "value1",
+      "leader_value": null,
       "leaves": {
         "saydate": [{
           "base": "saydate",
           "base_value": "2001-01-01",
+          "leader_value": null,
           "leaves": {}
         }]
       }
@@ -24,6 +26,7 @@
     "entry": {
       "base": "datum",
       "base_value": null,
+      "leader_value": null,
       "leaves": {}
     }
   },
@@ -39,15 +42,18 @@
     "entry": {
       "base": "datum",
       "base_value": "value1",
+      "leader_value": null,
       "leaves": {
         "filepath": [
           {
             "base": "filepath",
             "base_value": "path/to/1",
+            "leader_value": null,
             "leaves": {
               "filesize": [{
                 "base": "filesize",
                 "base_value": "1",
+                "leader_value": null,
                 "leaves": {}
               }]
             }
@@ -55,6 +61,7 @@
           {
             "base": "filepath",
             "base_value": "path/to/2",
+            "leader_value": null,
             "leaves": {}
           }
         ]

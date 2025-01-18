@@ -1,18 +1,23 @@
-use crate::types::entry::Entry;
 use crate::schema::{Leaves, Schema, Trunks};
+use crate::types::entry::Entry;
+mod line;
 mod strategy;
 use strategy::{plan_select, plan_select_schema};
 mod tablet;
-use tablet::select_tablet;
 use async_stream::stream;
-use futures_core::stream::Stream;
+use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
+use tablet::select_tablet;
+use tablet::State;
 
-fn select_schema_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> impl Stream<Item = Entry> {
+fn select_schema_stream<S: Stream<Item = Entry>>(
+    input: S,
+    path: PathBuf,
+) -> impl Stream<Item = Entry> {
     stream! {
         for await query in input {
             let is_schema = query.base == "_".to_string();
@@ -21,18 +26,25 @@ fn select_schema_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> imp
                 let strategy = plan_select_schema(query.clone());
 
                 let query_stream = stream! {
-                    yield query;
+                    yield State {
+                        entry: Some(query),
+                        query: None,
+                        match_map: None,
+                        has_match: false,
+                        is_match: false,
+                        fst: None,
+                        thing_querying: None
+                    };
                 };
 
-                // TODO fold strategy to streams
-                let select_stream = select_tablet(query_stream, path.clone(), strategy[0].clone());
-                // let select_stream: Stream<Item = Entry> = strategy.iter().fold(query_stream, |with_stream, tablet| {
-                //     stream! {}
-                //     // select_tablet(with_stream, tablet.clone())
-                // });
+                let mut stream: BoxStream<'static, State> = Box::pin(query_stream);
 
-                for await record in select_stream {
-                    yield record;
+                for tablet in strategy.clone() {
+                    stream = Box::pin(select_tablet(stream, path.clone(), tablet));
+                }
+
+                for await state in stream {
+                    yield state.entry.unwrap();
                 }
             } else {
             };
@@ -40,7 +52,10 @@ fn select_schema_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> imp
     }
 }
 
-fn select_record_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> impl Stream<Item = Entry> {
+fn select_record_stream<S: Stream<Item = Entry>>(
+    input: S,
+    path: PathBuf,
+) -> impl Stream<Item = Entry> {
     stream! {
         for await query in input {
             let is_schema = query.base == "_".to_string();
@@ -52,18 +67,26 @@ fn select_record_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> imp
                 let strategy = plan_select(schema.clone(), query.clone());
 
                 let query_stream = stream! {
-                    yield query;
+                    yield State {
+                        entry: Some(query),
+                        query: None,
+                        is_match: false,
+                        has_match: false,
+                        thing_querying: None,
+                        fst: None,
+                        match_map: None
+                    };
                 };
 
-                // TODO fold strategy to streams
-                let select_stream = select_tablet(query_stream, path.clone(), strategy[0].clone());
-                // let select_stream: Stream<Item = Entry> = strategy.iter().fold(query_stream, |with_stream, tablet| {
-                //     stream! {}
-                //     // select_tablet(with_stream, tablet.clone())
-                // });
 
-                for await record in select_stream {
-                    yield record;
+                let mut stream: BoxStream<'static, State> = Box::pin(query_stream);
+
+                for tablet in strategy.clone() {
+                    stream = Box::pin(select_tablet(stream, path.clone(), tablet));
+                }
+
+                for await state in stream {
+                    yield state.entry.unwrap();
                 }
             };
 
@@ -96,6 +119,7 @@ pub async fn select_schema(path: PathBuf) -> Schema {
         yield Entry {
             base: "_".to_string(),
             base_value: Some("_".to_string()),
+            leader_value: None,
             leaves: HashMap::new(),
         };
     };

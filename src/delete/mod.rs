@@ -1,22 +1,22 @@
+use crate::record::mow::mow;
+use crate::schema::Schema;
+use crate::schema::{find_crown, Leaves, Trunks};
+use crate::select::select_schema;
 use crate::types::entry::Entry;
-use crate::schema::{find_crown, Trunks, Leaves};
-use temp_dir::TempDir;
-use std::io::prelude::*;
-use std::fs::{File, rename};
-use text_file_sort::sort::Sort;
 use crate::types::grain::Grain;
 use crate::types::line::Line;
-use crate::schema::Schema;
-use crate::select::select_schema;
-use crate::record::mow::mow;
 use async_stream::stream;
-use futures_core::stream::{Stream, BoxStream};
+use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::fs::OpenOptions;
 use std::fs;
+use std::fs::OpenOptions;
+use std::fs::{rename, File};
+use std::io::prelude::*;
+use std::path::PathBuf;
+use temp_dir::TempDir;
+use text_file_sort::sort::Sort;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Tablet {
@@ -28,21 +28,23 @@ struct Tablet {
 fn plan_delete(schema: Schema, query: Entry) -> Vec<Tablet> {
     let (Trunks(trunks), Leaves(leaves)) = schema.0.get(&query.base).unwrap();
 
-    let trunk_tablets: Vec<Tablet> = trunks.iter().map(|trunk| {
-        Tablet {
+    let trunk_tablets: Vec<Tablet> = trunks
+        .iter()
+        .map(|trunk| Tablet {
             filename: format!("{}-{}.csv", trunk, query.base),
             trait_: query.clone().base_value.unwrap(),
             trait_is_first: false,
-        }
-    }).collect();
+        })
+        .collect();
 
-    let leaf_tablets = leaves.iter().map(|leaf| {
-        Tablet {
+    let leaf_tablets = leaves
+        .iter()
+        .map(|leaf| Tablet {
             filename: format!("{}-{}.csv", query.base, leaf),
             trait_: query.clone().base_value.unwrap(),
             trait_is_first: true,
-        }
-    }).collect();
+        })
+        .collect();
 
     vec![trunk_tablets, leaf_tablets].concat()
 }
@@ -52,9 +54,11 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
 
     match fs::metadata(filepath.clone()) {
         Err(_) => return,
-        Ok(m) => if m.len() == 0 {
-            return
-        } else {
+        Ok(m) => {
+            if m.len() == 0 {
+                return;
+            } else {
+            }
         }
     }
 
@@ -95,15 +99,20 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
     // if empty
     match fs::metadata(output.clone()) {
         Err(_) => fs::remove_file(filepath).unwrap(),
-        Ok(m) => if m.len() == 0 {
-            fs::remove_file(filepath).unwrap();
-        } else {
-            fs::rename(output, filepath).unwrap();
+        Ok(m) => {
+            if m.len() == 0 {
+                fs::remove_file(filepath).unwrap();
+            } else {
+                fs::rename(output, filepath).unwrap();
+            }
         }
     }
 }
 
-async fn delete_record_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> impl Stream<Item = Entry> {
+async fn delete_record_stream<S: Stream<Item = Entry>>(
+    input: S,
+    path: PathBuf,
+) -> impl Stream<Item = Entry> {
     let schema = select_schema(path.clone()).await;
 
     stream! {

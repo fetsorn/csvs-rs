@@ -10,6 +10,7 @@ use std::fmt;
 pub struct Entry {
     pub base: String,
     pub base_value: Option<String>,
+    pub leader_value: Option<String>,
     pub leaves: HashMap<String, Vec<Entry>>,
 }
 
@@ -53,9 +54,22 @@ impl TryFrom<Value> for Entry {
                     None
                 };
 
+                let leader_value: Option<String> = if v.contains_key("__") {
+                    match &v["__"] {
+                        Value::Null => panic!(""),
+                        Value::Bool(_) => panic!(""),
+                        Value::Number(_) => panic!(""),
+                        Value::String(s) => Some(s.clone()),
+                        Value::Array(_) => panic!(""),
+                        Value::Object(_) => panic!(""),
+                    }
+                } else {
+                    None
+                };
+
                 let leaves: HashMap<String, Vec<Entry>> = v
                     .iter()
-                    .filter(|(key, _)| (*key != "_") && (**key != base))
+                    .filter(|(key, _)| (*key != "_") && (**key != base) && (**key != "__"))
                     .map(|(key, val)| {
                         let leaf = key;
                         let values = match val {
@@ -66,6 +80,7 @@ impl TryFrom<Value> for Entry {
                                 vec![Entry {
                                     base: leaf.to_string(),
                                     base_value: Some(s.to_string()),
+                                    leader_value: None,
                                     leaves: HashMap::new(),
                                 }]
                             }
@@ -78,6 +93,7 @@ impl TryFrom<Value> for Entry {
                                     Value::String(s) => Entry {
                                         base: leaf.to_string(),
                                         base_value: Some(s.to_string()),
+                                        leader_value: None,
                                         leaves: HashMap::new(),
                                     },
                                     Value::Array(_) => panic!(""),
@@ -98,9 +114,10 @@ impl TryFrom<Value> for Entry {
                     .collect();
 
                 Entry {
-                    base: base,
-                    base_value: base_value,
-                    leaves: leaves,
+                    base,
+                    base_value,
+                    leader_value,
+                    leaves,
                 }
             }
         };
@@ -144,6 +161,11 @@ impl IntoValue for Entry {
         match self.base_value {
             None => (),
             Some(s) => value[self.base] = s.into(),
+        }
+
+        match self.leader_value {
+            None => (),
+            Some(s) => value["__"] = s.into(),
         }
 
         for (leaf, items) in self.leaves.iter() {

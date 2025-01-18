@@ -312,6 +312,7 @@ dependencies = [
  "dir-diff",
  "futures-core",
  "futures-util",
+ "regex",
  "serde",
  "serde_json",
  "temp-dir",

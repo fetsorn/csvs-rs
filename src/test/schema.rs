@@ -1,6 +1,6 @@
 use super::read_record;
-use crate::types::entry::Entry;
 use crate::schema::{find_crown, Leaves, Schema, Trunks};
+use crate::types::entry::Entry;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

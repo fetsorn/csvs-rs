@@ -1,0 +1,7 @@
+[
+  {
+    "initial": "record2001",
+    "query": { "_": "datum", "actname": "name1" },
+    "expected": [ "record2001" ]
+  }
+]

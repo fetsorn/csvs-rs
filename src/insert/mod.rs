@@ -1,21 +1,21 @@
-use crate::types::entry::Entry;
+use crate::record::mow::mow;
 use crate::schema::find_crown;
-use temp_dir::TempDir;
-use std::fs::{File, rename};
-use text_file_sort::sort::Sort;
-use crate::types::grain::Grain;
-use crate::types::line::Line;
 use crate::schema::Schema;
 use crate::select::select_schema;
-use crate::record::mow::mow;
+use crate::types::entry::Entry;
+use crate::types::grain::Grain;
+use crate::types::line::Line;
 use async_stream::stream;
-use futures_core::stream::{Stream, BoxStream};
+use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::fs::OpenOptions;
 use std::fs;
+use std::fs::OpenOptions;
+use std::fs::{rename, File};
+use std::path::PathBuf;
+use temp_dir::TempDir;
+use text_file_sort::sort::Sort;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Tablet {
@@ -40,13 +40,19 @@ fn plan_insert(schema: Schema, query: Entry) -> Vec<Tablet> {
     let crown = find_crown(&schema, &query.base);
 
     let tablets = crown.iter().fold(vec![], |with_branch, branch| {
-        let tablets_new = schema.0.get(branch).unwrap().0.0.iter().map(|trunk| {
-            Tablet {
+        let tablets_new = schema
+            .0
+            .get(branch)
+            .unwrap()
+            .0
+             .0
+            .iter()
+            .map(|trunk| Tablet {
                 filename: format!("{}-{}.csv", trunk, branch),
                 trunk: trunk.clone(),
                 branch: branch.clone(),
-            }
-        }).collect();
+            })
+            .collect();
 
         vec![with_branch, tablets_new].concat()
     });
@@ -54,13 +60,19 @@ fn plan_insert(schema: Schema, query: Entry) -> Vec<Tablet> {
     tablets
 }
 
-fn insert_tablet<S: Stream<Item = Entry>>(input: S, path: PathBuf, tablet: Tablet) -> impl Stream<Item = Entry> {
+fn insert_tablet<S: Stream<Item = Entry>>(
+    input: S,
+    path: PathBuf,
+    tablet: Tablet,
+) -> impl Stream<Item = Entry> {
     let filepath = path.join(&tablet.filename);
 
     println!("{}", filepath.clone().display());
 
     // create file if it doesn't exist
-    if fs::metadata(filepath.clone()).is_err() { File::create(filepath.clone()).unwrap(); }
+    if fs::metadata(filepath.clone()).is_err() {
+        File::create(filepath.clone()).unwrap();
+    }
 
     let file = OpenOptions::new()
         .append(true)
@@ -92,7 +104,10 @@ fn insert_tablet<S: Stream<Item = Entry>>(input: S, path: PathBuf, tablet: Table
     }
 }
 
-async fn insert_record_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> impl Stream<Item = Entry> {
+async fn insert_record_stream<S: Stream<Item = Entry>>(
+    input: S,
+    path: PathBuf,
+) -> impl Stream<Item = Entry> {
     let schema = select_schema(path.clone()).await;
 
     let mut strategy = vec![];

@@ -1,8 +1,8 @@
 use super::read_record;
+use crate::record::mow::mow;
 use crate::types::entry::Entry;
 use crate::types::grain::Grain;
 use crate::types::into_value::IntoValue;
-use crate::record::mow::mow;
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -29,9 +29,11 @@ fn mow_test() {
 
         let result_json: Vec<Value> = result.iter().map(|i| i.clone().into_value()).collect();
 
-        let expected_json: Vec<Value> = test.expected.iter().map(|grain| {
-            read_record(grain)
-        }).collect();
+        let expected_json: Vec<Value> = test
+            .expected
+            .iter()
+            .map(|grain| read_record(grain))
+            .collect();
 
         assert_json_eq!(result_json, expected_json);
     }

@@ -1,22 +1,22 @@
-use crate::types::entry::Entry;
-use std::collections::HashMap;
+use crate::record::mow::mow;
 use crate::schema::find_crown;
-use temp_dir::TempDir;
-use std::fs::{File, rename};
-use text_file_sort::sort::Sort;
-use crate::types::grain::Grain;
-use crate::types::line::Line;
 use crate::schema::Schema;
 use crate::select::select_schema;
-use crate::record::mow::mow;
+use crate::types::entry::Entry;
+use crate::types::grain::Grain;
+use crate::types::line::Line;
 use async_stream::stream;
-use futures_core::stream::{Stream, BoxStream};
+use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::fs::OpenOptions;
+use std::collections::HashMap;
 use std::fs;
+use std::fs::OpenOptions;
+use std::fs::{rename, File};
+use std::path::PathBuf;
+use temp_dir::TempDir;
+use text_file_sort::sort::Sort;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Tablet {
@@ -28,33 +28,33 @@ struct Tablet {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct State {
     fst: Option<String>,
-    is_match: bool
-
+    is_match: bool,
 }
 
 fn plan_update(schema: Schema, query: Entry) -> Vec<Tablet> {
     let is_schema = query.base == "_";
 
     if is_schema {
-        return vec![ Tablet {
+        return vec![Tablet {
             filename: "_-_.csv".to_string(),
             trunk: "_".to_string(),
-            branch: "_".to_string()
-        } ]
+            branch: "_".to_string(),
+        }];
     }
 
     let crown = find_crown(&schema, &query.base);
 
     let tablets = crown.iter().fold(vec![], |with_branch, branch| {
-        let trunks = schema.0.get(branch).unwrap().clone().0.0;
+        let trunks = schema.0.get(branch).unwrap().clone().0 .0;
 
-        let tablets_new = trunks.iter().map(|trunk| {
-            Tablet {
+        let tablets_new = trunks
+            .iter()
+            .map(|trunk| Tablet {
                 filename: format!("{}-{}.csv", trunk, branch),
                 trunk: trunk.clone(),
                 branch: branch.clone(),
-            }
-        }).collect();
+            })
+            .collect();
 
         vec![with_branch, tablets_new].concat()
     });
@@ -85,38 +85,48 @@ fn update_schema_line_stream(entry: Entry) -> impl Stream<Item = Line> {
     }
 }
 
-fn update_line_stream<S: Stream<Item = Line>>(input: S, entry: Entry, tablet: Tablet) -> impl Stream<Item = Line> {
+fn update_line_stream<S: Stream<Item = Line>>(
+    input: S,
+    entry: Entry,
+    tablet: Tablet,
+) -> impl Stream<Item = Line> {
     let grains = mow(entry, &tablet.trunk, &tablet.branch);
 
-    let mut keys: Vec<String> = grains.iter().map(|grain| {
-        grain.clone().base_value.unwrap()
-    }).collect::<std::collections::HashSet<_>>().into_iter().collect::<Vec<String>>();
+    let mut keys: Vec<String> = grains
+        .iter()
+        .map(|grain| grain.clone().base_value.unwrap())
+        .collect::<std::collections::HashSet<_>>()
+        .into_iter()
+        .collect::<Vec<String>>();
 
     keys.sort();
 
-    let values: HashMap<String, Vec<String>> = grains.iter().fold(HashMap::new(), |with_grain, grain| {
-        let key = grain.clone().base_value.unwrap();
+    let values: HashMap<String, Vec<String>> =
+        grains.iter().fold(HashMap::new(), |with_grain, grain| {
+            let key = grain.clone().base_value.unwrap();
 
-        if grain.clone().leaf_value.is_none() {return with_grain}
+            if grain.clone().leaf_value.is_none() {
+                return with_grain;
+            }
 
-        let value = grain.clone().leaf_value.unwrap();
+            let value = grain.clone().leaf_value.unwrap();
 
-        let values_old: Vec<String> = with_grain.get(&key).unwrap_or(&vec![]).to_vec();
+            let values_old: Vec<String> = with_grain.get(&key).unwrap_or(&vec![]).to_vec();
 
-        let mut values_new = vec![values_old, vec![value]].concat();
+            let mut values_new = vec![values_old, vec![value]].concat();
 
-        values_new.sort();
+            values_new.sort();
 
-        let mut with_grain_new = with_grain.clone();
+            let mut with_grain_new = with_grain.clone();
 
-        with_grain_new.insert(key, values_new);
+            with_grain_new.insert(key, values_new);
 
-        with_grain_new
-    });
+            with_grain_new
+        });
 
     let mut state_intermediary = State {
         fst: None,
-        is_match: false
+        is_match: false,
     };
 
     stream! {
@@ -208,7 +218,11 @@ fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
     }
 }
 
-fn update_tablet<S: Stream<Item = Entry>>(input: S, path: PathBuf, tablet: Tablet) -> impl Stream<Item = Entry> {
+fn update_tablet<S: Stream<Item = Entry>>(
+    input: S,
+    path: PathBuf,
+    tablet: Tablet,
+) -> impl Stream<Item = Entry> {
     let filepath = path.join(&tablet.filename);
 
     let is_schema = tablet.filename == "_-_.csv";
@@ -287,7 +301,10 @@ fn update_tablet<S: Stream<Item = Entry>>(input: S, path: PathBuf, tablet: Table
     }
 }
 
-async fn update_record_stream<S: Stream<Item = Entry>>(input: S, path: PathBuf) -> impl Stream<Item = Entry> {
+async fn update_record_stream<S: Stream<Item = Entry>>(
+    input: S,
+    path: PathBuf,
+) -> impl Stream<Item = Entry> {
     let schema = select_schema(path.clone()).await;
 
     stream! {

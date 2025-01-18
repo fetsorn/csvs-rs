@@ -23,24 +23,22 @@ pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
 
     if entry.base == trait_ {
         return match entry.leaves.get(thing) {
-            None => vec![
-                Grain {
-                    base: trait_.to_string(),
+            None => vec![Grain {
+                base: trait_.to_string(),
+                base_value: Some(entry.base_value.clone().unwrap()),
+                leaf: thing.to_string(),
+                leaf_value: None,
+            }],
+            Some(items) => items
+                .iter()
+                .map(|item| Grain {
+                    base: entry.base.clone(),
                     base_value: Some(entry.base_value.clone().unwrap()),
                     leaf: thing.to_string(),
-                    leaf_value: None,
-                }
-            ],
-            Some(items) => items
-                    .iter()
-                    .map(|item| Grain {
-                        base: entry.base.clone(),
-                        base_value: Some(entry.base_value.clone().unwrap()),
-                        leaf: thing.to_string(),
-                        leaf_value: Some(item.base_value.clone().unwrap()),
-                    })
-                    .collect()
-        }
+                    leaf_value: Some(item.base_value.clone().unwrap()),
+                })
+                .collect(),
+        };
     }
 
     // TODO if record has trait

@@ -4,8 +4,8 @@ use assert_json_diff::assert_json_eq;
 use serde_json::Value;
 use temp_dir::TempDir;
 extern crate dir_diff;
-use crate::update::update_record;
 use crate::schema::{Leaves, Schema, Trunks};
+use crate::update::update_record;
 use async_stream::stream;
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
@@ -63,9 +63,9 @@ async fn update_test() {
                 } else {
                     let received = fs::read_to_string(entry.path()).unwrap();
 
-                     // println!("{}", entry.path().clone().display());
+                    // println!("{}", entry.path().clone().display());
 
-                     // println!("{}", fs::read_to_string(expected_path.join(entry.file_name()).clone()).unwrap());
+                    // println!("{}", fs::read_to_string(expected_path.join(entry.file_name()).clone()).unwrap());
 
                     let expected =
                         fs::read_to_string(expected_path.join(entry.file_name())).unwrap();

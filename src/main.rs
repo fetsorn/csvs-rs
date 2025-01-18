@@ -1,12 +1,13 @@
+#![allow(warnings)]
 use clap::{Parser, Subcommand};
-mod insert;
 mod delete;
-mod select;
-mod update;
-mod types;
+mod insert;
 mod record;
 mod schema;
+mod select;
 mod test;
+mod types;
+mod update;
 use insert::insert_record;
 use std::env;
 

@@ -15,6 +15,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
                 None => Entry {
                     base: thing.to_string(),
                     base_value: Some(grain_base_value),
+                    leader_value: None,
                     leaves: entry.leaves.clone(),
                 },
             },
@@ -30,6 +31,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
             let thing_item = Entry {
                 base: thing.to_string(),
                 base_value: Some(grain.leaf_value.unwrap().to_string()),
+                leader_value: None,
                 leaves: HashMap::new(),
             };
 
@@ -41,6 +43,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
             return Entry {
                 base: entry.base.to_string(),
                 base_value: Some(entry.base_value.unwrap().to_string()),
+                leader_value: None,
                 leaves: leaves,
             };
         } else {
@@ -63,6 +66,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
                 let thing_item = Entry {
                     base: grain.leaf.clone(),
                     base_value: grain.leaf_value.clone(),
+                    leader_value: None,
                     leaves: HashMap::new(),
                 };
 
@@ -79,6 +83,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
                     Entry {
                         base: trunk_item.base.clone(),
                         base_value: trunk_item.base_value.clone(),
+                        leader_value: None,
                         leaves: leaves,
                     }
                 } else {
@@ -111,6 +116,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
     Entry {
         base: entry.base.clone(),
         base_value: entry.base_value.clone(),
+        leader_value: None,
         leaves: leaves_new,
     }
 }
