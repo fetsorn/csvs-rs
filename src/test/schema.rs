@@ -1,5 +1,12 @@
+use crate::{
+    schema::{find_crown, Leaves, Schema, Trunks},
+    types::entry::Entry,
+};
+use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
+use std::fs;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SchemaTest {
@@ -50,8 +57,5 @@ fn find_crown_test() {
 
     crown.sort();
 
-    assert_eq!(
-        crown.clone(),
-        vec!["date", "datum", "name"]
-    );
+    assert_eq!(crown.clone(), vec!["date", "datum", "name"]);
 }

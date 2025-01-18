@@ -242,7 +242,5 @@ pub fn plan_select(schema: Schema, query: Entry) -> Vec<Tablet> {
 
     let strategy_value = plan_values(schema, query);
 
-    
-
     [strategy_base, strategy_value].concat()
 }

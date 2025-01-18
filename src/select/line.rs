@@ -8,8 +8,8 @@ use crate::types::line::Line;
 use async_stream::stream;
 use futures_core::stream::Stream;
 use futures_util::stream::StreamExt;
-use std::collections::HashMap;
 use regex::Regex;
+use std::collections::HashMap;
 
 fn make_state_initial(state: State, tablet: Tablet) -> State {
     // in a querying tablet, set initial entry to the base of the tablet
@@ -111,9 +111,9 @@ fn make_state_line(
             let is_match_grain = if tablet.trait_is_regex {
                 let re_str = grain.clone().base_value.unwrap();
 
-                let RE = Regex::new(&re_str).unwrap();
+                let re = Regex::new(&re_str).unwrap();
 
-                RE.is_match(&trait_)
+                re.is_match(&trait_)
             } else {
                 grain.clone().base_value.unwrap() == trait_
             };

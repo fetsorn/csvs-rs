@@ -1,5 +1,8 @@
 extern crate dir_diff;
+use crate::{delete::delete_record, test::read_record, types::entry::Entry};
 use serde::{Deserialize, Serialize};
+use std::fs;
+use temp_dir::TempDir;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct DeleteTest {

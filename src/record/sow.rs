@@ -72,8 +72,10 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
 
                 leaves.insert(
                     grain.leaf.to_string(),
-                    [leaves.get(&grain.leaf).unwrap_or(&vec![]).clone(),
-                        vec![thing_item]]
+                    [
+                        leaves.get(&grain.leaf).unwrap_or(&vec![]).clone(),
+                        vec![thing_item],
+                    ]
                     .concat(),
                 );
 

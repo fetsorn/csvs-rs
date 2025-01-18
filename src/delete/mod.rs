@@ -53,7 +53,7 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
         Ok(m) => {
             if m.len() == 0 {
                 return;
-            } 
+            }
         }
     }
 

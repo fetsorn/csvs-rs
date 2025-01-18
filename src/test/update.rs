@@ -1,5 +1,12 @@
 extern crate dir_diff;
+use crate::{
+    test::read_record,
+    types::{entry::Entry, grain::Grain},
+    update::update_record,
+};
 use serde::{Deserialize, Serialize};
+use std::fs;
+use temp_dir::TempDir;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct UpdateTest {

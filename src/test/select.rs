@@ -1,6 +1,13 @@
+use assert_json_diff::assert_json_eq;
 use serde_json::Value;
 extern crate dir_diff;
+use crate::{
+    select::select_record,
+    test::read_record,
+    types::{entry::Entry, into_value::IntoValue},
+};
 use serde::{Deserialize, Serialize};
+use std::fs;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SelectTest {
