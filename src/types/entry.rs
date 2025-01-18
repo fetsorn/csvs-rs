@@ -16,7 +16,7 @@ pub struct Entry {
 
 impl fmt::Display for Entry {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.clone().into_value().to_string())
+        write!(f, "{}", self.clone().into_value())
     }
 }
 
@@ -175,7 +175,7 @@ impl IntoValue for Entry {
                     false => entry.clone().into_value(),
                 };
 
-                match value.get(&leaf) {
+                match value.get(leaf) {
                     None => value[&leaf] = leaf_value,
                     Some(i) => match i {
                         Value::Null => panic!(""),
@@ -188,7 +188,7 @@ impl IntoValue for Entry {
                             value[&leaf] = vec![o.clone().into(), leaf_value].into()
                         }
                         Value::Array(vs) => {
-                            value[&leaf] = vec![vs.clone(), vec![leaf_value]].concat().into()
+                            value[&leaf] = [vs.clone(), vec![leaf_value]].concat().into()
                         }
                     },
                 }

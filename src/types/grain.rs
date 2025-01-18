@@ -52,7 +52,7 @@ impl TryFrom<Value> for Grain {
                     .map(|(key, val)| (key.clone(), val.clone()))
                     .collect();
 
-                if leaves.len() == 0 {
+                if leaves.is_empty() {
                     return Ok(Grain {
                         base: base.to_owned(),
                         base_value: base_value.to_owned(),
@@ -81,8 +81,8 @@ impl TryFrom<Value> for Grain {
                 Ok(Grain {
                     base: base.to_owned(),
                     base_value: base_value.to_owned(),
-                    leaf: leaf,
-                    leaf_value: leaf_value,
+                    leaf,
+                    leaf_value,
                 })
             }
         }

@@ -3,7 +3,6 @@ use crate::schema::find_crown;
 use crate::schema::Schema;
 use crate::select::select_schema;
 use crate::types::entry::Entry;
-use crate::types::grain::Grain;
 use crate::types::line::Line;
 use async_stream::stream;
 use futures_core::stream::{BoxStream, Stream};
@@ -13,10 +12,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::fs::OpenOptions;
-use std::fs::{rename, File};
+use std::fs::File;
 use std::path::PathBuf;
 use temp_dir::TempDir;
-use text_file_sort::sort::Sort;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Tablet {
@@ -56,7 +54,7 @@ fn plan_update(schema: Schema, query: Entry) -> Vec<Tablet> {
             })
             .collect();
 
-        vec![with_branch, tablets_new].concat()
+        [with_branch, tablets_new].concat()
     });
 
     tablets
@@ -113,7 +111,7 @@ fn update_line_stream<S: Stream<Item = Line>>(
 
             let values_old: Vec<String> = with_grain.get(&key).unwrap_or(&vec![]).to_vec();
 
-            let mut values_new = vec![values_old, vec![value]].concat();
+            let mut values_new = [values_old, vec![value]].concat();
 
             values_new.sort();
 
@@ -182,7 +180,7 @@ fn update_line_stream<S: Stream<Item = Line>>(
 
             state_intermediary = State {
                 fst: Some(line.key),
-                is_match: is_match
+                is_match
             }
         }
 

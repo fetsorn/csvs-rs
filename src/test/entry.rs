@@ -1,13 +1,5 @@
-use super::read_record;
-use crate::types::entry::Entry;
-use crate::types::into_value::IntoValue;
-use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::convert::TryInto;
-use std::{fmt, fs};
+use serde_json::Value;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct EntryTest {

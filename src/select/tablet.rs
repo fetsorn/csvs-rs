@@ -1,6 +1,5 @@
 use super::line::select_line_stream;
 use super::strategy::Tablet;
-use crate::schema::{Leaves, Schema, Trunks};
 use crate::types::entry::Entry;
 use crate::types::line::Line;
 use async_stream::stream;
@@ -10,7 +9,6 @@ use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
-use std::io::{self, prelude::*, BufReader};
 use std::path::PathBuf;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -41,7 +39,7 @@ fn select_schema_line_stream<S: Stream<Item = Line>>(
             let leaves = schema_entry.leaves.get(&trunk).unwrap_or(&empty_leaves);
 
             // append leaf
-            let leaves_new = vec![leaves.clone(), vec![Entry {
+            let leaves_new = [leaves.clone(), vec![Entry {
                 base: trunk.clone(),
                 base_value: Some(leaf.clone()),
                 leader_value: None,

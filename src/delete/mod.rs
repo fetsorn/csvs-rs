@@ -1,22 +1,18 @@
-use crate::record::mow::mow;
 use crate::schema::Schema;
-use crate::schema::{find_crown, Leaves, Trunks};
+use crate::schema::{Leaves, Trunks};
 use crate::select::select_schema;
 use crate::types::entry::Entry;
-use crate::types::grain::Grain;
 use crate::types::line::Line;
 use async_stream::stream;
-use futures_core::stream::{BoxStream, Stream};
+use futures_core::stream::Stream;
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::fs::OpenOptions;
-use std::fs::{rename, File};
+use std::fs::File;
 use std::io::prelude::*;
 use std::path::PathBuf;
 use temp_dir::TempDir;
-use text_file_sort::sort::Sort;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Tablet {
@@ -46,7 +42,7 @@ fn plan_delete(schema: Schema, query: Entry) -> Vec<Tablet> {
         })
         .collect();
 
-    vec![trunk_tablets, leaf_tablets].concat()
+    [trunk_tablets, leaf_tablets].concat()
 }
 
 async fn delete_tablet(path: PathBuf, tablet: Tablet) {
@@ -57,8 +53,7 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
         Ok(m) => {
             if m.len() == 0 {
                 return;
-            } else {
-            }
+            } 
         }
     }
 

@@ -54,7 +54,7 @@ fn plan_insert(schema: Schema, query: Entry) -> Vec<Tablet> {
             })
             .collect();
 
-        vec![with_branch, tablets_new].concat()
+        [with_branch, tablets_new].concat()
     });
 
     tablets

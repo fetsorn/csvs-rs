@@ -2,19 +2,13 @@ use super::strategy::Tablet;
 use super::tablet::State;
 use crate::record::mow::mow;
 use crate::record::sow::sow;
-use crate::schema::{Leaves, Schema, Trunks};
 use crate::types::entry::Entry;
 use crate::types::grain::Grain;
 use crate::types::line::Line;
 use async_stream::stream;
 use futures_core::stream::Stream;
-use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{self, prelude::*, BufReader};
-use std::path::PathBuf;
 use regex::Regex;
 
 fn make_state_initial(state: State, tablet: Tablet) -> State {
@@ -154,7 +148,7 @@ fn make_state_line(
                 state.thing_querying = Some(thing.clone())
             }
 
-            if (is_match && match_is_new && tablet.accumulating) {
+            if is_match && match_is_new && tablet.accumulating {
                 state
                     .match_map
                     .as_mut()
@@ -185,13 +179,11 @@ fn make_state_line(
             }),
     );
 
-    if tablet.querying {
-        if thing == state_initial.thing_querying.unwrap() {
-            // if previous querying tablet already matched thing
-            // the trait in this record is likely to be the same
-            // and might duplicate in the entry after sow
-            return state;
-        }
+    if tablet.querying && thing == state_initial.thing_querying.unwrap() {
+        // if previous querying tablet already matched thing
+        // the trait in this record is likely to be the same
+        // and might duplicate in the entry after sow
+        return state;
     }
 
     state.query = Some(
@@ -220,7 +212,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
         &tablet.thing,
     );
 
-    return stream! {
+    stream! {
         for await line in input {
             let fst_is_new = state_current.fst.is_some() && state_current.fst.unwrap() != line.key;
 
@@ -280,7 +272,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
             }
         }
 
-        let is_empty_passthrough = tablet.passthrough && state.has_match == false;
+        let is_empty_passthrough = tablet.passthrough && !state.has_match;
 
         // after all records have been pushed for forwarding
         // push the matchMap so that other accumulating tablets
@@ -308,5 +300,5 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                 thing_querying: None
             };
         }
-    };
+    }
 }

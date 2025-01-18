@@ -38,7 +38,7 @@ impl TryFrom<Entry> for Schema {
                             let trunk_trunks = Trunks(trunk_trunks_old);
 
                             let trunk_leaves =
-                                Leaves(vec![trunk_leaves_old, vec![leaf.clone()]].concat());
+                                Leaves([trunk_leaves_old, vec![leaf.clone()]].concat());
 
                             node_map_new.insert(trunk.clone(), (trunk_trunks, trunk_leaves));
 
@@ -46,7 +46,7 @@ impl TryFrom<Entry> for Schema {
                                 with_leaf.get(&leaf).unwrap_or(&empty_node.clone()).clone();
 
                             let leaf_trunks =
-                                Trunks(vec![leaf_trunks_old, vec![trunk.to_string()]].concat());
+                                Trunks([leaf_trunks_old, vec![trunk.to_string()]].concat());
 
                             let leaf_leaves = Leaves(leaf_leaves_old);
 
@@ -85,7 +85,7 @@ pub fn is_connected(schema: &Schema, base: &str, branch: &str) -> bool {
     }
 
     // if trunk is not connected to base, leaf is also not connected to base
-    return false;
+    false
 }
 
 pub fn find_crown(schema: &Schema, base: &str) -> Vec<String> {

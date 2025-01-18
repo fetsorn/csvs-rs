@@ -1,4 +1,4 @@
-use crate::schema::{Leaves, Schema, Trunks};
+use crate::schema::Schema;
 use crate::types::entry::Entry;
 mod line;
 mod strategy;
@@ -8,7 +8,6 @@ use async_stream::stream;
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tablet::select_tablet;
@@ -20,7 +19,7 @@ fn select_schema_stream<S: Stream<Item = Entry>>(
 ) -> impl Stream<Item = Entry> {
     stream! {
         for await query in input {
-            let is_schema = query.base == "_".to_string();
+            let is_schema = query.base == *"_";
 
             if is_schema {
                 let strategy = plan_select_schema(query.clone());
@@ -46,8 +45,7 @@ fn select_schema_stream<S: Stream<Item = Entry>>(
                 for await state in stream {
                     yield state.entry.unwrap();
                 }
-            } else {
-            };
+            } ;
         }
     }
 }
@@ -58,7 +56,7 @@ fn select_record_stream<S: Stream<Item = Entry>>(
 ) -> impl Stream<Item = Entry> {
     stream! {
         for await query in input {
-            let is_schema = query.base == "_".to_string();
+            let is_schema = query.base == *"_";
 
             if is_schema {
             } else {

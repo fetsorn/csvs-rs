@@ -37,14 +37,14 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
 
             leaves.insert(
                 thing.to_string(),
-                vec![leaves[thing].clone(), vec![thing_item]].concat(),
+                [leaves[thing].clone(), vec![thing_item]].concat(),
             );
 
             return Entry {
                 base: entry.base.to_string(),
                 base_value: Some(entry.base_value.unwrap().to_string()),
                 leader_value: None,
-                leaves: leaves,
+                leaves,
             };
         } else {
             return entry;
@@ -72,10 +72,8 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
 
                 leaves.insert(
                     grain.leaf.to_string(),
-                    vec![
-                        leaves.get(&grain.leaf).unwrap_or(&vec![]).clone(),
-                        vec![thing_item],
-                    ]
+                    [leaves.get(&grain.leaf).unwrap_or(&vec![]).clone(),
+                        vec![thing_item]]
                     .concat(),
                 );
 
@@ -84,7 +82,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
                         base: trunk_item.base.clone(),
                         base_value: trunk_item.base_value.clone(),
                         leader_value: None,
-                        leaves: leaves,
+                        leaves,
                     }
                 } else {
                     trunk_item.clone()

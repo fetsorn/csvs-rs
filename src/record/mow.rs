@@ -63,7 +63,7 @@ pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
                         })
                         .collect();
 
-                    vec![with_trunk_item, trunk_item_grains].concat()
+                    [with_trunk_item, trunk_item_grains].concat()
                 } else {
                     // TODO somewhere here return { _: trait, [trait]: trunkValue }
                     //      if branch item does not have base value
@@ -74,7 +74,7 @@ pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
                         leaf_value: None,
                     };
 
-                    vec![with_trunk_item, vec![grain]].concat()
+                    [with_trunk_item, vec![grain]].concat()
                 }
             });
 
@@ -89,9 +89,9 @@ pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
             let leaf_grains = leaf_items.iter().fold(vec![], |with_leaf_item, leaf_item| {
                 let leaf_item_grains = mow(leaf_item.clone(), trait_, thing);
 
-                return vec![with_leaf_item, leaf_item_grains].concat();
+                [with_leaf_item, leaf_item_grains].concat()
             });
 
-            return vec![with_entry, leaf_grains].concat();
+            [with_entry, leaf_grains].concat()
         })
 }
