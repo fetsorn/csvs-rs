@@ -54,10 +54,12 @@ fn find_crown_test() {
         ),
     ]));
 
-    let crown = find_crown(&schema, "datum");
+    let mut crown = find_crown(&schema, "datum");
+
+    crown.sort();
 
     assert_eq!(
-        crown.clone().sort(),
-        vec!["datum", "name", "date"].clone().sort()
+        crown.clone(),
+        vec!["date", "datum", "name"]
     );
 }
