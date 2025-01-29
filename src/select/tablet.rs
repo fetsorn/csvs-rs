@@ -13,41 +13,42 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 
+fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
+    stream! {
+        if std::fs::metadata(filepath.clone()).is_err() {
+            return;
+        }
+
+        let file = File::open(filepath).unwrap();
+
+        let mut rdr = csv::ReaderBuilder::new()
+            .has_headers(false)
+            .from_reader(file);
+
+        for result in rdr.deserialize() {
+            let record: Line = result.unwrap();
+
+            yield record;
+        }
+    }
+}
+
 pub fn select_tablet<S: Stream<Item = State>>(
     input: S,
     path: PathBuf,
     tablet: Tablet,
 ) -> impl Stream<Item = State> {
-    println!("{}", serde_json::to_string_pretty(&tablet).unwrap());
+    // println!("{}", serde_json::to_string_pretty(&tablet).unwrap());
 
     stream! {
         for await state in input {
             let filepath = path.join(&tablet.filename);
 
-            // for every line from tablet.filename
-            let line_stream = stream! {
-                if std::fs::metadata(filepath.clone()).is_err() {
-                    return;
-                }
-
-                let file = File::open(filepath).unwrap();
-
-                let mut rdr = csv::ReaderBuilder::new()
-                        .has_headers(false)
-                        .from_reader(file);
-
-                for result in rdr.deserialize() {
-                    let record: Line = result.unwrap();
-
-                    yield record;
-                }
-            };
-
             let is_schema = tablet.filename == "_-_.csv";
 
             if is_schema {
                 // do select_schema_line_stream
-                let s = select_schema_line_stream(line_stream, state.query.unwrap());
+                let s = select_schema_line_stream(line_stream(filepath), state.query.unwrap());
 
                 pin_mut!(s); // needed for iteration
 
@@ -63,7 +64,7 @@ pub fn select_tablet<S: Stream<Item = State>>(
 
                 if drop_match_map {
                     // do nothing
-                    return;
+                    continue;
                 }
 
                 // accumulating tablets find all values
@@ -77,6 +78,7 @@ pub fn select_tablet<S: Stream<Item = State>>(
                 let forward_accumulating = tablet.accumulating && state.match_map.is_none();
 
                 if forward_accumulating {
+                    // println!("wtf {} {}", tablet.filename, state);
                     yield State {
                         entry: state.entry,
                         query: state.query,
@@ -87,10 +89,10 @@ pub fn select_tablet<S: Stream<Item = State>>(
                         thing_querying: None
                     };
 
-                    return;
+                    continue;
                 }
 
-                let s = select_line_stream(line_stream, state, tablet.clone());
+                let s = select_line_stream(line_stream(filepath), state, tablet.clone());
 
                 pin_mut!(s); // needed for iteration
 

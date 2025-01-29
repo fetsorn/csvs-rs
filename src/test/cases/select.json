@@ -23,5 +23,15 @@
     "initial": "array_simple",
     "query": { "_": "datum", "actname": "name2" },
     "expected": [ "record_array_simple" ]
+  },
+  {
+    "initial": "array_double",
+    "query": { "_": "datum", "datum": "value" },
+    "expected": [ "record_array_double_1", "record_array_double_2" ]
+  },
+  {
+    "initial": "array",
+    "query": { "_": "datum", "actname": "name1" },
+    "expected": [ "record_array" ]
   }
 ]

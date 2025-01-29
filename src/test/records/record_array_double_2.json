@@ -1,0 +1,16 @@
+{
+  "_": "datum",
+  "actdate": "2002-01-01",
+  "actname": "name2",
+  "datum": "value2",
+  "filepath": {
+    "_": "filepath",
+    "filepath": "path/to/2",
+    "moddate": "2002-01-01"
+  },
+  "saydate": "2002-01-01",
+  "sayname": [
+    "name2",
+    "name3"
+  ]
+}

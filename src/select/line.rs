@@ -192,6 +192,7 @@ fn make_state_line(
         })
         .collect();
 
+
     // if tablet.filename == "datum-filepath.csv" {println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grains_new).unwrap())};
 
     state.entry = Some(
@@ -257,7 +258,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
     stream! {
         for await line in input {
 
-            println!("{} {},{}", tablet.filename, line.key, line.value);
+            // println!("{} {},{}", tablet.filename, line.key, line.value);
             // println!("{} {} {} {}", tablet.filename, tablet.passthrough, line.clone().key, line.clone().value);
 
             let fst_is_new = state_current.fst.is_some() && state_current.fst.unwrap() != line.key;
@@ -290,10 +291,11 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                     thing_querying: state_current.clone().thing_querying,
                 };
 
-                println!("push end of group {} {},{} {}", tablet.filename, line.key, line.value, state_to_push);
+                if tablet.accumulating {println!("push end of group {} {},{} {}", tablet.filename, line.key, line.value, state_to_push)};
 
                 yield state_to_push;
                 // println!("{} {} 2", tablet.filename, tablet.passthrough);
+                if tablet.accumulating {println!("?" )};
 
                 state_current.entry = state_initial.clone().entry;
 
@@ -308,6 +310,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
 
             // println!("{} {} {} {}", tablet.filename, tablet.passthrough, trait_, thing);
 
+            if tablet.accumulating {println!("{:?} \n {:#?}", tablet, line)};
             state_current = make_state_line(state_initial.clone(), state_current.clone(), tablet.clone(), grains.clone(), trait_, thing);
 
             // if tablet.filename == "datum-filepath.csv" {
@@ -340,7 +343,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                 match_map: None,
             };
 
-            println!("push end of file {} {}", tablet.filename, state_to_push);
+            if tablet.accumulating {println!("push end of file {} {}", tablet.filename, state_to_push)};
 
             yield state_to_push;
         }
@@ -364,7 +367,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                 thing_querying: None
             };
 
-            println!("accumulating {} {}", tablet.filename, state_to_push);
+            println!("push matchMap {} {}", tablet.filename, state_to_push);
 
             yield state_to_push;
         } else if is_empty_passthrough {
@@ -379,7 +382,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                 thing_querying: None
             };
 
-            println!("forward empty {} {}", tablet.filename, state_to_push);
+            if tablet.accumulating {println!("forward empty {} {}", tablet.filename, state_to_push)};
 
             yield state_to_push;
         }

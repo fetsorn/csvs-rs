@@ -6,6 +6,17 @@ use crate::types::grain::Grain;
 //      since grain's thing is leaf but can't make leaf same as base
 pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
     if entry.base == thing {
+        if trait_ == entry.base {
+            return vec![
+                Grain {
+                    base: entry.base.clone(),
+                    base_value: entry.base_value.clone(),
+                    leaf: trait_.to_string(),
+                    leaf_value: entry.base_value.clone(),
+                }
+            ]
+        }
+
         let items = &entry.leaves[trait_];
 
         let grains: Vec<Grain> = items
