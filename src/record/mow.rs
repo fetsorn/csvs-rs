@@ -12,9 +12,9 @@ pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
             .iter()
             .map(|item| Grain {
                 base: entry.base.clone(),
-                base_value: Some(entry.base_value.clone().unwrap()),
+                base_value: entry.base_value.clone(),
                 leaf: trait_.to_string(),
-                leaf_value: Some(item.base_value.clone().unwrap()),
+                leaf_value: item.base_value.clone(),
             })
             .collect();
 

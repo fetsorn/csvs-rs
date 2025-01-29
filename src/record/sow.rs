@@ -4,17 +4,20 @@ use std::collections::HashMap;
 
 // TODO remove trait, thing and use grain.base, grain.leaf
 pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
+    // if trait_ == "datum" && thing == "filepath" {println!("{} {} {} {}", serde_json::to_string_pretty(&entry).unwrap(), serde_json::to_string_pretty(&grain).unwrap(), trait_, thing)};
+
     // let base = entry;
 
     // if base equals thing
     if entry.base == thing {
-        return match grain.base_value {
+        // TODO here match
+        return match grain.leaf_value {
             None => entry,
-            Some(grain_base_value) => match entry.base_value {
+            Some(grain_leaf_value) => match entry.base_value {
                 Some(_) => panic!(),
                 None => Entry {
                     base: thing.to_string(),
-                    base_value: Some(grain_base_value),
+                    base_value: Some(grain_leaf_value),
                     leader_value: None,
                     leaves: entry.leaves.clone(),
                 },
@@ -25,30 +28,32 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
     //   append grain.thing to record.thing
     // if base equals trait
     if entry.base == trait_ {
-        if entry.leaves.contains_key(thing) {
-            let mut leaves = entry.leaves.clone();
+        let thing_item = Entry {
+            base: thing.to_string(),
+            base_value: Some(grain.leaf_value.unwrap().to_string()),
+            leader_value: None,
+            leaves: HashMap::new(),
+        };
 
-            let thing_item = Entry {
-                base: thing.to_string(),
-                base_value: Some(grain.leaf_value.unwrap().to_string()),
-                leader_value: None,
-                leaves: HashMap::new(),
-            };
+        let mut leaves = entry.leaves.clone();
 
-            leaves.insert(
-                thing.to_string(),
-                [leaves[thing].clone(), vec![thing_item]].concat(),
-            );
-
-            return Entry {
-                base: entry.base.to_string(),
-                base_value: Some(entry.base_value.unwrap().to_string()),
-                leader_value: None,
-                leaves,
-            };
+        let items_new = if entry.leaves.contains_key(thing) {
+            [leaves[thing].clone(), vec![thing_item]].concat()
         } else {
-            return entry;
-        }
+            vec![thing_item]
+        };
+
+        leaves.insert(
+            thing.to_string(),
+            items_new,
+        );
+
+        return Entry {
+            base: entry.base.to_string(),
+            base_value: Some(entry.base_value.unwrap().to_string()),
+            leader_value: None,
+            leaves,
+        };
     }
 
     let record_has_trait = entry.leaves.keys().any(|v| v == trait_);
@@ -113,10 +118,14 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
         })
         .collect();
 
-    Entry {
+    let foo = Entry {
         base: entry.base.clone(),
         base_value: entry.base_value.clone(),
         leader_value: None,
         leaves: leaves_new,
-    }
+    };
+
+    // if trait_ == "datum" && thing == "filepath" {println!("{}", serde_json::to_string_pretty(&foo).unwrap())};
+
+    foo
 }

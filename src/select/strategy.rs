@@ -1,23 +1,9 @@
 use crate::schema::{find_crown, Leaves, Schema, Trunks};
 use crate::types::entry::Entry;
+use super::types::tablet::Tablet;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Tablet {
-    pub filename: String,
-    pub thing: String,
-    pub trait_: String,
-    pub thing_is_first: bool,
-    pub trait_is_first: bool,
-    pub base: String,
-    pub trait_is_regex: bool,
-    pub passthrough: bool,
-    pub querying: bool,
-    pub eager: bool,
-    pub accumulating: bool,
-}
 
 pub fn plan_select_schema(query: Entry) -> Vec<Tablet> {
     vec![Tablet {
@@ -65,7 +51,7 @@ fn sort_nesting_ascending(schema: Schema) -> impl FnMut(&String, &String) -> Ord
             return Ordering::Greater;
         }
 
-        Ordering::Equal
+        return a.cmp(b);
     }
 }
 
@@ -93,7 +79,7 @@ fn sort_nesting_descending(schema: Schema) -> impl FnMut(&String, &String) -> Or
             return Ordering::Greater;
         }
 
-        Ordering::Equal
+        return a.cmp(b);
     }
 }
 

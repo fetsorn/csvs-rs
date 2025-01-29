@@ -1,7 +1,27 @@
 [
   {
-    "initial": "record2001",
+    "initial": "default",
     "query": { "_": "datum", "actname": "name1" },
     "expected": [ "record2001" ]
+  },
+  {
+    "initial": "default",
+    "query": { "_": "datum", "actname": "name2" },
+    "expected": [ "record2002" ]
+  },
+  {
+    "initial": "default",
+    "query": { "_": "datum", "actname": "name3" },
+    "expected": [ "record2003_unedited" ]
+  },
+  {
+    "initial": "unordered",
+    "query": { "_": "datum", "actname": "name2" },
+    "expected": [ "record2002" ]
+  },
+  {
+    "initial": "array_simple",
+    "query": { "_": "datum", "actname": "name2" },
+    "expected": [ "record_array_simple" ]
   }
 ]

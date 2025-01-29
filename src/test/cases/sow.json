@@ -12,5 +12,12 @@
     "trait_": "export_tags",
     "thing": "export1_tag",
     "expected": "record_array_sow"
+  },
+  {
+    "initial": "record_base_is_trait",
+    "grain": "grain_base_is_trait",
+    "trait_": "datum",
+    "thing": "filepath",
+    "expected": "grain_base_is_trait"
   }
 ]

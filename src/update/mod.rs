@@ -134,7 +134,6 @@ fn update_line_stream<S: Stream<Item = Line>>(
 
             if state_intermediary.is_match && fst_is_new {
                 for value in values.get(&state_intermediary.clone().fst.unwrap()).unwrap_or(&vec![]) {
-                    // println!("AAA, {}, {}", state_intermediary.clone().fst.unwrap(), value.clone());
                     yield Line {
                         key: state_intermediary.clone().fst.unwrap(),
                         value: value.clone()
@@ -158,9 +157,7 @@ fn update_line_stream<S: Stream<Item = Line>>(
                 });
 
                 for key in keys_between {
-                    // println!("why, {:?}", values.get(&key).unwrap_or(&vec![]));
                     for value in values.get(&key).unwrap_or(&vec![]) {
-                        // println!("BBB, {}, {}", key.clone(), value.clone());
                         yield Line {
                             key: key.clone(),
                             value: value.clone()
@@ -174,7 +171,6 @@ fn update_line_stream<S: Stream<Item = Line>>(
             let is_match: bool = keys.contains(&line.key);
 
             if !is_match {
-                // println!("CCC, {}, {}", line.clone().key, line.clone().value);
                 yield line.clone();
             }
 
@@ -186,7 +182,6 @@ fn update_line_stream<S: Stream<Item = Line>>(
 
         for key in keys.clone() {
             for value in values.get(&key).unwrap_or(&vec![]) {
-                // println!("DDD, {}, {}", key.clone(), value.clone());
                 yield Line {
                     key: key.clone(),
                     value: value.clone()
@@ -208,8 +203,6 @@ fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
 
         for result in rdr.deserialize() {
             let line: Line = result.unwrap();
-
-            // println!("ZZZ {:?}", line.clone());
 
             yield line
         }
@@ -263,11 +256,8 @@ fn update_tablet<S: Stream<Item = Entry>>(
                 pin_mut!(update_stream);
 
                 for await line_new in update_stream {
-                    //println!("> {:?}", line_new.clone());
                     wtr.serialize(line_new).unwrap();
                     wtr.flush().unwrap();
-                    //println!("{}", temp_path.clone().display());
-                    //println!("{}", fs::read_to_string(temp_path.clone()).unwrap());
                 }
             }
         }
@@ -279,12 +269,6 @@ fn update_tablet<S: Stream<Item = Entry>>(
                     fs::remove_file(filepath.clone()).unwrap();
                 }
             } else {
-                println!("zzzz{}", filepath.clone().display());
-
-                if fs::metadata(temp_path.clone()).is_ok() {
-                    println!("{}", fs::read_to_string(temp_path.clone()).unwrap());
-                }
-
                 fs::rename(temp_path, filepath.clone()).unwrap();
             }
         }

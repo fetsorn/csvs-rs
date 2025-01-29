@@ -67,8 +67,6 @@ fn insert_tablet<S: Stream<Item = Entry>>(
 ) -> impl Stream<Item = Entry> {
     let filepath = path.join(&tablet.filename);
 
-    println!("{}", filepath.clone().display());
-
     // create file if it doesn't exist
     if fs::metadata(filepath.clone()).is_err() {
         File::create(filepath.clone()).unwrap();

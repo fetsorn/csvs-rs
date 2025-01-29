@@ -1,7 +1,9 @@
 use crate::schema::Schema;
 use crate::types::entry::Entry;
 mod line;
+mod types;
 mod strategy;
+mod schema;
 use strategy::{plan_select, plan_select_schema};
 mod tablet;
 use async_stream::stream;
@@ -11,7 +13,7 @@ use futures_util::stream::StreamExt;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tablet::select_tablet;
-use tablet::State;
+use types::state::State;
 
 fn select_schema_stream<S: Stream<Item = Entry>>(
     input: S,
@@ -26,9 +28,9 @@ fn select_schema_stream<S: Stream<Item = Entry>>(
 
                 let query_stream = stream! {
                     yield State {
-                        entry: Some(query),
-                        query: None,
-                        match_map: None,
+                        entry: None,
+                        query: Some(query),
+                        match_map: Some(HashMap::new()),
                         has_match: false,
                         is_match: false,
                         fst: None,
@@ -50,6 +52,29 @@ fn select_schema_stream<S: Stream<Item = Entry>>(
     }
 }
 
+pub async fn select_schema(path: PathBuf) -> Schema {
+    let readable_stream = stream! {
+        yield Entry {
+            base: "_".to_string(),
+            base_value: Some("_".to_string()),
+            leader_value: None,
+            leaves: HashMap::new(),
+        };
+    };
+
+    let s = select_schema_stream(readable_stream, path);
+
+    pin_mut!(s); // needed for iteration
+
+    let mut entries = vec![];
+
+    while let Some(entry) = s.next().await {
+        entries.push(entry);
+    }
+
+    entries[0].clone().try_into().unwrap()
+}
+
 fn select_record_stream<S: Stream<Item = Entry>>(
     input: S,
     path: PathBuf,
@@ -66,13 +91,13 @@ fn select_record_stream<S: Stream<Item = Entry>>(
 
                 let query_stream = stream! {
                     yield State {
-                        entry: Some(query),
-                        query: None,
+                        entry: None,
+                        query: Some(query),
                         is_match: false,
                         has_match: false,
                         thing_querying: None,
                         fst: None,
-                        match_map: None
+                        match_map: Some(HashMap::new()),
                     };
                 };
 
@@ -110,27 +135,4 @@ pub async fn select_record(path: PathBuf, query: Vec<Entry>) -> Vec<Entry> {
     }
 
     entries
-}
-
-pub async fn select_schema(path: PathBuf) -> Schema {
-    let readable_stream = stream! {
-        yield Entry {
-            base: "_".to_string(),
-            base_value: Some("_".to_string()),
-            leader_value: None,
-            leaves: HashMap::new(),
-        };
-    };
-
-    let s = select_schema_stream(readable_stream, path);
-
-    pin_mut!(s); // needed for iteration
-
-    let mut entries = vec![];
-
-    while let Some(entry) = s.next().await {
-        entries.push(entry);
-    }
-
-    entries[0].clone().try_into().unwrap()
 }
