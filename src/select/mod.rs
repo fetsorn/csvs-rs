@@ -20,6 +20,7 @@ fn select_schema_stream<S: Stream<Item = Entry>>(
 ) -> impl Stream<Item = Entry> {
     stream! {
         for await query in input {
+            // TODO merge with select_record_stream
             let is_schema = query.base == *"_";
 
             if is_schema {
@@ -83,12 +84,34 @@ fn select_record_stream<S: Stream<Item = Entry>>(
             let is_schema = query.clone().base == *"_";
 
             if is_schema {
+                // TODO merge with select_schema_stream
+                let strategy = plan_select_schema(query.clone());
+
+                let query_stream = stream! {
+                    yield State {
+                        entry: None,
+                        query: Some(query),
+                        match_map: Some(HashMap::new()),
+                        has_match: false,
+                        is_match: false,
+                        fst: None,
+                        thing_querying: None
+                    };
+                };
+
+                let mut stream: BoxStream<'static, State> = Box::pin(query_stream);
+
+                for tablet in strategy.clone() {
+                    stream = Box::pin(select_tablet(stream, path.clone(), tablet));
+                }
+
+                for await state in stream {
+                    yield state.entry.unwrap();
+                }
             } else {
                 let schema = select_schema(path.clone()).await;
 
                 let strategy = plan_select(schema.clone(), query.clone());
-
-                println!("{:#?}", strategy);
 
                 let query_push = query.clone();
 
@@ -121,7 +144,7 @@ fn select_record_stream<S: Stream<Item = Entry>>(
 
                     // if query has __, return leader
                     // TODO what if leader is nested? what if many leaders? use mow
-                    let entry_new = match query.clone().leaves.clone().get("__") {
+                    let entry_new = match query.clone().leader_value {
                         None => {
                             let mut entry = state.entry.clone().unwrap();
 
@@ -129,12 +152,10 @@ fn select_record_stream<S: Stream<Item = Entry>>(
 
                             entry
                         },
-                        Some(m) => {
-                            let foo = m.first().unwrap().base_value.clone().unwrap();
-
+                        Some(s) => {
                             let bar = state.query.clone().unwrap();
 
-                            let baz = bar.leaves.get(&foo).unwrap();
+                            let baz = bar.leaves.get(&s).unwrap();
 
                             baz.first().unwrap().clone()
                         }

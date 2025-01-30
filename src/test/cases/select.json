@@ -105,5 +105,40 @@
       "option_export1_tag_2",
       "option_export1_tag_3"
     ]
+  },
+  {
+    "initial": "default",
+    "query": { "_": "_" },
+    "expected": [ "record_schema" ]
+  },
+  {
+    "initial": "default",
+    "query": { "_": "datum", "__": "filepath", "actname": "name1" },
+    "expected": [ "record2001_filepath" ]
+  },
+  {
+    "initial": "array_literal",
+    "query": { "_": "datum", "actname": "name1" },
+    "expected": [ "record_array_literal" ]
+  },
+  {
+    "initial": "array",
+    "query": { "_": "export_tags", "export1_tag": "not" },
+    "expected": []
+  },
+  {
+    "initial": "array_long",
+    "query": { "_": "event", "actname": "not" },
+    "expected": []
+  },
+  {
+    "initial": "semicolon",
+    "query": { "_": "event", "event": "event1" },
+    "expected": [ "record_semicolon" ]
+  },
+  {
+    "initial": "two_roots",
+    "query": { "_": "datum", "actname": "name1" },
+    "expected": [ "record2001" ]
   }
 ]
