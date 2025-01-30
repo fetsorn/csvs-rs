@@ -1,5 +1,6 @@
 use crate::{
-    schema::{find_crown, Leaves, Schema, Trunks},
+    schema::find_crown,
+    types::schema::{ Leaves, Schema, Trunks},
     types::entry::Entry,
 };
 use assert_json_diff::assert_json_eq;

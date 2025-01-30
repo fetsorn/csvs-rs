@@ -14,10 +14,10 @@
     "expected": "record_array_sow"
   },
   {
-    "initial": "record_base_is_trait",
-    "grain": "grain_base_is_trait",
+    "initial": "record_sow_base_is_trait",
+    "grain": "grain_sow_base_is_trait",
     "trait_": "datum",
     "thing": "filepath",
-    "expected": "grain_base_is_trait"
+    "expected": "grain_sow_base_is_trait"
   }
 ]
