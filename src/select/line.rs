@@ -291,6 +291,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                     thing_querying: state_current.clone().thing_querying,
                 };
 
+                println!("push end of group {} {},{} {}", tablet.filename, line.key, line.value, state_to_push);
                 // if tablet.accumulating {println!("push end of group {} {},{} {}", tablet.filename, line.key, line.value, state_to_push)};
 
                 yield state_to_push;
@@ -343,6 +344,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                 match_map: None,
             };
 
+            println!("push end of file {} {}", tablet.filename, state_to_push);
             // if tablet.accumulating {println!("push end of file {} {}", tablet.filename, state_to_push)};
 
             yield state_to_push;
@@ -367,7 +369,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                 thing_querying: None
             };
 
-            // println!("push matchMap {} {}", tablet.filename, state_to_push);
+            println!("push matchMap {} {}", tablet.filename, state_to_push);
 
             yield state_to_push;
         } else if is_empty_passthrough {
@@ -382,6 +384,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                 thing_querying: None
             };
 
+            println!("forward empty {} {}", tablet.filename, state_to_push);
             // if tablet.accumulating {println!("forward empty {} {}", tablet.filename, state_to_push)};
 
             yield state_to_push;

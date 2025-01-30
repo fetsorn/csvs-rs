@@ -80,7 +80,7 @@ fn select_record_stream<S: Stream<Item = Entry>>(
 ) -> impl Stream<Item = Entry> {
     stream! {
         for await query in input {
-            let is_schema = query.base == *"_";
+            let is_schema = query.clone().base == *"_";
 
             if is_schema {
             } else {
@@ -88,10 +88,14 @@ fn select_record_stream<S: Stream<Item = Entry>>(
 
                 let strategy = plan_select(schema.clone(), query.clone());
 
+                println!("{:#?}", strategy);
+
+                let query_push = query.clone();
+
                 let query_stream = stream! {
                     yield State {
                         entry: None,
-                        query: Some(query),
+                        query: Some(query_push),
                         is_match: false,
                         has_match: false,
                         thing_querying: None,
@@ -108,7 +112,39 @@ fn select_record_stream<S: Stream<Item = Entry>>(
                 }
 
                 for await state in stream {
-                    yield state.entry.unwrap();
+                    // TODO move to leader stream
+                    let base_new = if state.entry.clone().unwrap().base != query.clone().base {
+                        query.clone().base
+                    } else {
+                        state.entry.clone().unwrap().base
+                    };
+
+                    // if query has __, return leader
+                    // TODO what if leader is nested? what if many leaders? use mow
+                    let entry_new = match query.clone().leaves.clone().get("__") {
+                        None => {
+                            let mut entry = state.entry.clone().unwrap();
+
+                            entry.base = base_new;
+
+                            entry
+                        },
+                        Some(m) => {
+                            let foo = m.first().unwrap().base_value.clone().unwrap();
+
+                            let bar = state.query.clone().unwrap();
+
+                            let baz = bar.leaves.get(&foo).unwrap();
+
+                            baz.first().unwrap().clone()
+                        }
+                    };
+
+                    // do not return search result
+                    // if state comes from the end of accumulating
+                    if state.match_map.is_none() {
+                        yield entry_new;
+                    }
                 }
             };
 

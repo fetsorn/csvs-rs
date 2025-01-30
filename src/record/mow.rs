@@ -17,7 +17,10 @@ pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
             ]
         }
 
-        let items = &entry.leaves[trait_];
+        let items = match entry.leaves.get(trait_) {
+            None => &vec![],
+            Some(vs) => vs
+        };
 
         let grains: Vec<Grain> = items
             .iter()
@@ -36,7 +39,7 @@ pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
         return match entry.leaves.get(thing) {
             None => vec![Grain {
                 base: trait_.to_string(),
-                base_value: Some(entry.base_value.clone().unwrap()),
+                base_value: entry.base_value.clone(),
                 leaf: thing.to_string(),
                 leaf_value: None,
             }],
@@ -44,9 +47,9 @@ pub fn mow(entry: Entry, trait_: &str, thing: &str) -> Vec<Grain> {
                 .iter()
                 .map(|item| Grain {
                     base: entry.base.clone(),
-                    base_value: Some(entry.base_value.clone().unwrap()),
+                    base_value: entry.base_value.clone(),
                     leaf: thing.to_string(),
-                    leaf_value: Some(item.base_value.clone().unwrap()),
+                    leaf_value: item.base_value.clone(),
                 })
                 .collect(),
         };

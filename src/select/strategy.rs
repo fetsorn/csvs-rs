@@ -128,7 +128,7 @@ pub fn plan_values(schema: Schema, query: Entry) -> Vec<Tablet> {
 
     crown.sort_by(sort_nesting_descending(schema.clone()));
 
-    println!("{:#?}", crown);
+    // println!("{:#?}", crown);
 
     let value_tablets = crown.iter().fold(vec![], |with_branch, branch| {
         let (Trunks(trunks), _) = schema.0.get(branch).unwrap();

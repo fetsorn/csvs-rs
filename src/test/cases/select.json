@@ -33,5 +33,77 @@
     "initial": "array",
     "query": { "_": "datum", "actname": "name1" },
     "expected": [ "record_array" ]
+  },
+  {
+    "initial": "array_added",
+    "query": { "_": "datum", "datum": "value1" },
+    "expected": [ "record_array" ]
+  },
+  {
+    "initial": "array_added",
+    "query": { "_": "datum", "export_tags": { "_": "export_tags", "export1_tag": { "_": "export1_tag", "export1_key": "longkey1" } } },
+    "expected": [ "record_array" ]
+  },
+  {
+    "initial": "default",
+    "query": { "_": "datum", "actname": "name.*" },
+    "expected": [ "record2003_unedited", "record2001", "record2002" ]
+  },
+  {
+    "initial": "default",
+    "query": { "_": "datum", "actname": "name$" },
+    "expected": [ ]
+  },
+  {
+    "initial": "default",
+    "query": { "_": "datum", "actname": "^ame$" },
+    "expected": [ ]
+  },
+  {
+    "initial": "default",
+    "query": { "_": "datum", "filepath": { "_": "filepath", "moddate": ".*-01-01" } },
+    "expected": [ "record2001", "record2002" ]
+  },
+  {
+    "initial": "default",
+    "query": { "_": "datum", "actname": "name.*", "actdate": "2001-01-01" },
+    "expected": [ "record2001" ]
+  },
+  {
+    "initial": "array_added",
+    "query": { "_": "export1_tag", "export1_key": "longkey1" },
+    "expected": [ "record_export1_tag" ]
+  },
+  {
+    "initial": "deleted_array_item",
+    "query": { "_": "export1_tag", "export1_key": "longkey1" },
+    "expected": [ "record_export1_tag" ]
+  },
+  {
+    "initial": "added",
+    "query": { "_": "actname" },
+    "expected": [
+      "option_actname_3",
+      "option_actname_1",
+      "option_actname_2",
+      "option_actname_5"
+    ]
+  },
+  {
+    "initial": "array",
+    "query": { "_": "export1_tag" },
+    "expected": [
+      "option_export1_tag_1",
+      "option_export1_tag_2"
+    ]
+  },
+  {
+    "initial": "array_free",
+    "query": { "_": "export1_tag" },
+    "expected": [
+      "option_export1_tag_1",
+      "option_export1_tag_2",
+      "option_export1_tag_3"
+    ]
   }
 ]

@@ -50,7 +50,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
 
         return Entry {
             base: entry.base.to_string(),
-            base_value: Some(entry.base_value.unwrap().to_string()),
+            base_value: entry.base_value,
             leader_value: None,
             leaves,
         };
