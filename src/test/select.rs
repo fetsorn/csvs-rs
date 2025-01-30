@@ -40,9 +40,9 @@ async fn select_test() {
             .map(|grain| read_record(grain))
             .collect();
 
-        println!("ask: {:?}", query.into_value());
-        println!("want: {:?}", expected_json);
-        println!("got: {:?}", entries_json);
+        println!("ask: {:#?}", query.into_value());
+        println!("want: {:#?}", expected_json);
+        println!("got: {:#?}", entries_json);
 
         assert_json_eq!(entries_json, expected_json);
     }

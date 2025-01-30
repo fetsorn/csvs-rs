@@ -1,0 +1,27 @@
+[
+  {
+    "schema": "record_schema_array",
+    "initial": "datum",
+    "expected": 0
+  },
+  {
+    "schema": "record_schema_array",
+    "initial": "export_tags",
+    "expected": 1
+  },
+  {
+    "schema": "record_schema_array",
+    "initial": "export2_tag",
+    "expected": 2
+  },
+  {
+    "schema": "record_schema_array",
+    "initial": "export2_tag_description",
+    "expected": 3
+  },
+  {
+    "schema": "record_schema_array",
+    "initial": "export2_tag_description_text1",
+    "expected": 4
+  }
+]

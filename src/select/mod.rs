@@ -1,5 +1,4 @@
-use crate::schema::Schema;
-use crate::types::entry::Entry;
+use crate::types::{entry::Entry, schema::Schema};
 mod line;
 mod types;
 mod strategy;

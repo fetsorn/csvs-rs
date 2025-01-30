@@ -39,6 +39,7 @@ pub fn select_tablet<S: Stream<Item = State>>(
     tablet: Tablet,
 ) -> impl Stream<Item = State> {
     // println!("{}", serde_json::to_string_pretty(&tablet).unwrap());
+    // println!("{}", tablet.filename);
 
     stream! {
         for await state in input {

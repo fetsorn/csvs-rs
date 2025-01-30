@@ -1,9 +1,8 @@
-use crate::schema::{find_crown, Leaves, Schema, Trunks};
-use crate::types::entry::Entry;
+use crate::schema::{find_crown, sort_nesting_ascending, sort_nesting_descending};
+use crate::types::{entry::Entry, schema::{Leaves, Schema, Trunks}};
 use super::types::tablet::Tablet;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
-use std::cmp::Ordering;
 
 pub fn plan_select_schema(query: Entry) -> Vec<Tablet> {
     vec![Tablet {
@@ -19,68 +18,6 @@ pub fn plan_select_schema(query: Entry) -> Vec<Tablet> {
         eager: false,
         accumulating: false,
     }]
-}
-
-fn count_leaves(schema: Schema, branch: &str) -> usize {
-    let (_, Leaves(leaves)) = schema.0.get(branch).unwrap();
-
-    leaves.len()
-}
-
-fn sort_nesting_ascending(schema: Schema) -> impl FnMut(&String, &String) -> Ordering {
-    move |a, b| {
-        let schema = schema.clone();
-
-        let (Trunks(trunks_a), _) = schema.0.get(a).unwrap();
-
-        let (Trunks(trunks_b), _) = schema.0.get(b).unwrap();
-
-        if trunks_a.contains(b) {
-            return Ordering::Less;
-        }
-
-        if trunks_b.contains(a) {
-            return Ordering::Greater;
-        }
-
-        if count_leaves(schema.clone(), a) < count_leaves(schema.clone(), b) {
-            return Ordering::Less;
-        }
-
-        if count_leaves(schema.clone(), a) > count_leaves(schema.clone(), b) {
-            return Ordering::Greater;
-        }
-
-        return a.cmp(b);
-    }
-}
-
-fn sort_nesting_descending(schema: Schema) -> impl FnMut(&String, &String) -> Ordering {
-    move |a, b| {
-        let schema = schema.clone();
-
-        let (Trunks(trunks_a), _) = schema.0.get(a).unwrap();
-
-        let (Trunks(trunks_b), _) = schema.0.get(b).unwrap();
-
-        if trunks_b.contains(a) {
-            return Ordering::Less;
-        }
-
-        if trunks_a.contains(b) {
-            return Ordering::Greater;
-        }
-
-        if count_leaves(schema.clone(), a) > count_leaves(schema.clone(), b) {
-            return Ordering::Less;
-        }
-
-        if count_leaves(schema.clone(), a) < count_leaves(schema.clone(), b) {
-            return Ordering::Greater;
-        }
-
-        return a.cmp(b);
-    }
 }
 
 fn gather_keys(query: Entry) -> Vec<String> {
@@ -190,6 +127,8 @@ pub fn plan_values(schema: Schema, query: Entry) -> Vec<Tablet> {
         .collect();
 
     crown.sort_by(sort_nesting_descending(schema.clone()));
+
+    println!("{:#?}", crown);
 
     let value_tablets = crown.iter().fold(vec![], |with_branch, branch| {
         let (Trunks(trunks), _) = schema.0.get(branch).unwrap();

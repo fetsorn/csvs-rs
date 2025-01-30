@@ -1,6 +1,6 @@
 use crate::record::mow::mow;
 use crate::schema::find_crown;
-use crate::schema::Schema;
+use crate::types::schema::Schema;
 use crate::select::select_schema;
 use crate::types::entry::Entry;
 use crate::types::grain::Grain;

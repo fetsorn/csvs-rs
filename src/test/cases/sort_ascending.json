@@ -1,0 +1,49 @@
+[
+  {
+    "schema": "record_schema_array",
+    "initial": [
+      "filepath",
+      "export2_tag",
+      "export2_tag_description",
+      "export_tags",
+      "export1_tag",
+      "actdate",
+      "actname",
+      "export1_channel",
+      "export1_key",
+      "export2_password",
+      "export2_tag_description_text1",
+      "export2_tag_description_text2",
+      "export2_username",
+      "filehash",
+      "filesize",
+      "filetype",
+      "moddate",
+      "pathrule",
+      "saydate",
+      "sayname"
+    ],
+    "expected": [
+      "export2_tag_description_text2",
+      "export2_tag_description_text1",
+      "export2_username",
+      "export2_tag_description",
+      "export2_password",
+      "export1_key",
+      "export1_channel",
+      "pathrule",
+      "moddate",
+      "filetype",
+      "filesize",
+      "filehash",
+      "export2_tag",
+      "export1_tag",
+      "sayname",
+      "saydate",
+      "filepath",
+      "export_tags",
+      "actname",
+      "actdate"
+    ]
+  }
+]

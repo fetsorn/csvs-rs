@@ -1,6 +1,5 @@
-use crate::schema::Schema;
-use crate::schema::{Leaves, Trunks};
 use crate::select::select_schema;
+use crate::types::schema::{Schema, Leaves, Trunks};
 use crate::types::entry::Entry;
 use crate::types::line::Line;
 use async_stream::stream;
