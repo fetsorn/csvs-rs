@@ -38,7 +38,7 @@ async fn main() {
         None => env::current_dir().unwrap(),
     };
 
-    println!("Hello {}!", path.display());
+    // println!("Hello {}!", path.display());
 
     match &cli.command {
         Some(Commands::Insert { query }) => {
@@ -49,7 +49,7 @@ async fn main() {
             let entries = insert_record(path, vec![query_record]).await;
 
             for entry in entries.iter() {
-                println!("Hello {}!", entry);
+                // println!("Hello {}!", entry);
             }
         }
         None => (),

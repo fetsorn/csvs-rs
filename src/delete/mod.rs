@@ -97,7 +97,7 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
             if m.len() == 0 {
                 fs::remove_file(filepath).unwrap();
             } else {
-                fs::rename(output, filepath).unwrap();
+                fs::copy(output, filepath).unwrap();
             }
         }
     }

@@ -302,7 +302,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "csvs-rs"
+name = "csvs"
 version = "0.1.0"
 dependencies = [
  "assert-json-diff",

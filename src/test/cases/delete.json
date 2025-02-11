@@ -8,5 +8,10 @@
     "initial": "array",
     "query": "record_export1_tag",
     "expected": "deleted_leaf"
+  },
+  {
+    "initial": "deleted_leaf",
+    "query": "record_sow_base_is_trait",
+    "expected": "deleted_leaf_empty"
   }
 ]

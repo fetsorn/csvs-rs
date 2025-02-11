@@ -14,7 +14,7 @@ use std::path::PathBuf;
 use tablet::select_tablet;
 use types::state::State;
 
-fn select_schema_stream<S: Stream<Item = Entry>>(
+pub fn select_schema_stream<S: Stream<Item = Entry>>(
     input: S,
     path: PathBuf,
 ) -> impl Stream<Item = Entry> {
@@ -75,7 +75,7 @@ pub async fn select_schema(path: PathBuf) -> Schema {
     entries[0].clone().try_into().unwrap()
 }
 
-fn select_record_stream<S: Stream<Item = Entry>>(
+pub fn select_record_stream<S: Stream<Item = Entry>>(
     input: S,
     path: PathBuf,
 ) -> impl Stream<Item = Entry> {

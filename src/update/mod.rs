@@ -269,7 +269,8 @@ fn update_tablet<S: Stream<Item = Entry>>(
                     fs::remove_file(filepath.clone()).unwrap();
                 }
             } else {
-                fs::rename(temp_path, filepath.clone()).unwrap();
+                // fs::rename fails with invalid cross-device link
+                fs::copy(temp_path, filepath.clone()).unwrap();
             }
         }
 
