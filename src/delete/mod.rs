@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use temp_dir::TempDir;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -20,14 +20,14 @@ struct Tablet {
     pub trait_is_first: bool,
 }
 
-fn plan_delete(schema: Schema, query: Entry) -> Vec<Tablet> {
+fn plan_delete(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     let (Trunks(trunks), Leaves(leaves)) = schema.0.get(&query.base).unwrap();
 
     let trunk_tablets: Vec<Tablet> = trunks
         .iter()
         .map(|trunk| Tablet {
             filename: format!("{}-{}.csv", trunk, query.base),
-            trait_: query.clone().base_value.unwrap(),
+            trait_: query.base_value.as_ref().unwrap().to_owned(),
             trait_is_first: false,
         })
         .collect();
@@ -36,7 +36,7 @@ fn plan_delete(schema: Schema, query: Entry) -> Vec<Tablet> {
         .iter()
         .map(|leaf| Tablet {
             filename: format!("{}-{}.csv", query.base, leaf),
-            trait_: query.clone().base_value.unwrap(),
+            trait_: query.base_value.as_ref().unwrap().to_owned(),
             trait_is_first: true,
         })
         .collect();
@@ -44,10 +44,10 @@ fn plan_delete(schema: Schema, query: Entry) -> Vec<Tablet> {
     [trunk_tablets, leaf_tablets].concat()
 }
 
-async fn delete_tablet(path: PathBuf, tablet: Tablet) {
+async fn delete_tablet(path: &Path, tablet: Tablet) {
     let filepath = path.join(&tablet.filename);
 
-    match fs::metadata(filepath.clone()) {
+    match fs::metadata(&filepath) {
         Err(_) => return,
         Ok(m) => {
             if m.len() == 0 {
@@ -56,7 +56,7 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
         }
     }
 
-    let file = File::open(filepath.clone()).unwrap();
+    let file = File::open(&filepath).unwrap();
 
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(false)
@@ -66,7 +66,7 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
 
     let output = temp_path.as_ref().join(filepath.file_name().unwrap());
 
-    let temp_file = File::create(output.clone()).unwrap();
+    let temp_file = File::create(&output).unwrap();
 
     let mut wtr = csv::WriterBuilder::new()
         .has_headers(false)
@@ -76,9 +76,9 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
         let line: Line = result.unwrap();
 
         let trait_ = if tablet.trait_is_first {
-            line.clone().key
+            line.key.to_owned()
         } else {
-            line.clone().value
+            line.value.to_owned()
         };
 
         let is_match = trait_ == tablet.trait_;
@@ -91,7 +91,7 @@ async fn delete_tablet(path: PathBuf, tablet: Tablet) {
     wtr.flush().unwrap();
 
     // if empty
-    match fs::metadata(output.clone()) {
+    match fs::metadata(&output) {
         Err(_) => fs::remove_file(filepath).unwrap(),
         Ok(m) => {
             if m.len() == 0 {
@@ -107,14 +107,14 @@ async fn delete_record_stream<S: Stream<Item = Entry>>(
     input: S,
     path: PathBuf,
 ) -> impl Stream<Item = Entry> {
-    let schema = select_schema(path.clone()).await;
+    let schema = select_schema(&path).await;
 
     stream! {
         for await query in input {
-            let strategy = plan_delete(schema.clone(), query.clone());
+            let strategy = plan_delete(&schema, &query);
 
-            for tablet in strategy.clone() {
-                delete_tablet(path.clone(), tablet).await;
+            for tablet in strategy {
+                delete_tablet(&path, tablet).await;
             }
 
             yield query;

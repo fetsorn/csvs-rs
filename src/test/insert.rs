@@ -22,7 +22,7 @@ async fn insert_test() {
 
         let initial_path = format!("./src/test/datasets/{}", test.initial);
 
-        for entry in fs::read_dir(initial_path.clone()).unwrap() {
+        for entry in fs::read_dir(&initial_path).unwrap() {
             let entry = entry.unwrap();
 
             let filetype = entry.file_type().unwrap();
@@ -38,7 +38,7 @@ async fn insert_test() {
         let expected_path = std::path::Path::new(&expected_str);
 
         // parse query to Entry
-        let queries: Vec<Entry> = test.query.clone().into_iter().map(|query| read_record(&query).clone().try_into().unwrap()).collect();
+        let queries: Vec<Entry> = test.query.iter().map(|query| read_record(&query).try_into().unwrap()).collect();
 
         insert_record(temp_path.path().to_owned(), queries).await;
 

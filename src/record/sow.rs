@@ -3,7 +3,7 @@ use crate::types::grain::Grain;
 use std::collections::HashMap;
 
 // TODO remove trait, thing and use grain.base, grain.leaf
-pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
+pub fn sow(entry: &Entry, grain: &Grain, trait_: &str, thing: &str) -> Entry {
     // if trait_ == "datum" && thing == "filepath" {println!("{} {} {} {}", serde_json::to_string_pretty(&entry).unwrap(), serde_json::to_string_pretty(&grain).unwrap(), trait_, thing)};
 
     // let base = entry;
@@ -11,13 +11,13 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
     // if base equals thing
     if entry.base == thing {
         // TODO here match
-        return match grain.leaf_value {
-            None => entry,
+        return match &grain.leaf_value {
+            None => entry.clone(),
             Some(grain_leaf_value) => match entry.base_value {
                 Some(_) => panic!(),
                 None => Entry {
-                    base: thing.to_string(),
-                    base_value: Some(grain_leaf_value),
+                    base: thing.to_owned(),
+                    base_value: Some(grain_leaf_value.to_owned()),
                     leader_value: None,
                     leaves: entry.leaves.clone(),
                 },
@@ -29,8 +29,8 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
     // if base equals trait
     if entry.base == trait_ {
         let thing_item = Entry {
-            base: thing.to_string(),
-            base_value: Some(grain.leaf_value.unwrap().to_string()),
+            base: thing.to_owned(),
+            base_value: Some(grain.leaf_value.as_ref().unwrap().to_owned()),
             leader_value: None,
             leaves: HashMap::new(),
         };
@@ -43,14 +43,11 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
             vec![thing_item]
         };
 
-        leaves.insert(
-            thing.to_string(),
-            items_new,
-        );
+        leaves.insert(thing.to_owned(), items_new);
 
         return Entry {
-            base: entry.base.to_string(),
-            base_value: entry.base_value,
+            base: entry.base.to_owned(),
+            base_value: entry.base_value.clone(),
             leader_value: None,
             leaves,
         };
@@ -59,7 +56,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
     let record_has_trait = entry.leaves.keys().any(|v| v == trait_);
 
     if record_has_trait {
-        let trunk_items: Vec<Entry> = entry.leaves.get(trait_).unwrap().clone();
+        let trunk_items: &Vec<Entry> = entry.leaves.get(trait_).unwrap();
 
         let trait_items: Vec<Entry> = trunk_items
             .iter()
@@ -69,16 +66,19 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
                 let mut leaves = trunk_item.leaves.clone();
 
                 let thing_item = Entry {
-                    base: grain.leaf.clone(),
+                    base: grain.leaf.to_owned(),
                     base_value: grain.leaf_value.clone(),
                     leader_value: None,
                     leaves: HashMap::new(),
                 };
 
                 leaves.insert(
-                    grain.leaf.to_string(),
+                    grain.leaf.to_owned(),
                     [
-                        leaves.get(&grain.leaf).unwrap_or(&vec![]).clone(),
+                        match leaves.get(&grain.leaf) {
+                            None => vec![],
+                            Some(ls) => ls.clone(),
+                        },
                         vec![thing_item],
                     ]
                     .concat(),
@@ -86,7 +86,7 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
 
                 if is_match {
                     Entry {
-                        base: trunk_item.base.clone(),
+                        base: trunk_item.base.to_owned(),
                         base_value: trunk_item.base_value.clone(),
                         leader_value: None,
                         leaves,
@@ -99,27 +99,27 @@ pub fn sow(entry: Entry, grain: Grain, trait_: &str, thing: &str) -> Entry {
 
         let mut entry_new = entry.clone();
 
-        entry_new.leaves.insert(grain.base, trait_items);
+        entry_new.leaves.insert(grain.base.to_owned(), trait_items);
 
         return entry_new;
     }
 
     // go into objects
-    let leaves_new = entry
+    let leaves_new: HashMap<String, Vec<Entry>> = entry
         .leaves
         .iter()
         .map(|(leaf, leaf_items)| {
             let leaf_items_new: Vec<Entry> = leaf_items
                 .iter()
-                .map(|leaf_item| sow(leaf_item.clone(), grain.clone(), trait_, thing))
+                .map(|leaf_item| sow(leaf_item, grain, trait_, thing))
                 .collect();
 
-            (leaf.clone(), leaf_items_new.clone())
+            (leaf.to_owned(), leaf_items_new)
         })
         .collect();
 
     let foo = Entry {
-        base: entry.base.clone(),
+        base: entry.base.to_owned(),
         base_value: entry.base_value.clone(),
         leader_value: None,
         leaves: leaves_new,

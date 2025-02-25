@@ -28,9 +28,11 @@ async fn select_test() {
         let initial_path = std::path::Path::new(&initial_path);
 
         // parse query to Entry
-        let queries: Vec<Entry> = test.query.clone().into_iter().map(|query| query.try_into().unwrap()).collect();
+        let queries: Vec<Entry> = test.query.iter().map(|query| query.clone().try_into().unwrap()).collect();
 
-        let entries = select_record(initial_path.to_owned(), queries.clone()).await;
+        println!("ask: {:#?}", queries.clone().into_iter().map(|query| query.into_value()));
+
+        let entries = select_record(initial_path.to_owned(), queries).await;
 
         let entries_json: Vec<Value> = entries.iter().map(|i| i.clone().into_value()).collect();
 
@@ -40,7 +42,6 @@ async fn select_test() {
             .map(|grain| read_record(grain))
             .collect();
 
-        println!("ask: {:#?}", queries.into_iter().map(|query| query.into_value()));
         println!("want: {:#?}", expected_json);
         println!("got: {:#?}", entries_json);
 

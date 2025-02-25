@@ -38,7 +38,7 @@ fn grain_into_test() {
 
         let grain: Grain = serde_json::from_str(&grain_string).unwrap();
 
-        let result: Value = grain.clone().into_value();
+        let result: Value = grain.into_value();
 
         assert_json_eq!(result, test.value);
     }

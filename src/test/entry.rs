@@ -38,7 +38,7 @@ fn entry_into_test() {
 
         let entry: Entry = serde_json::from_str(&entry_string).unwrap();
 
-        let result: Value = entry.clone().into_value();
+        let result: Value = entry.into_value();
 
         assert_json_eq!(result, test.value);
     }

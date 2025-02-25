@@ -1,7 +1,10 @@
-use crate::types::{entry::Entry, schema::{Schema, Trunks, Leaves}};
+use crate::types::{
+    entry::Entry,
+    schema::{Leaves, Schema, Trunks},
+};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::Ordering;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
@@ -11,10 +14,10 @@ pub fn is_connected(schema: &Schema, base: &str, branch: &str) -> bool {
         return true;
     }
 
-    let empty_node = (Trunks(vec![]), Leaves(vec![]));
-
-    let (Trunks(trunks), Leaves(leaves)) =
-        schema.0.get(branch).unwrap_or(&empty_node.clone()).clone();
+    let (Trunks(trunks), Leaves(leaves)) = match schema.0.get(branch) {
+        None => (Trunks(vec![]), Leaves(vec![])),
+        Some(vs) => vs.clone(),
+    };
 
     for trunk in trunks.iter() {
         if trunk == base {
@@ -35,7 +38,6 @@ pub fn is_connected(schema: &Schema, base: &str, branch: &str) -> bool {
 pub fn find_crown(schema: &Schema, base: &str) -> Vec<String> {
     schema
         .0
-        .clone()
         .keys()
         .filter(|branch| is_connected(schema, base, branch))
         .cloned()
@@ -51,11 +53,14 @@ pub fn count_leaves(schema: Schema, branch: &str) -> usize {
 pub fn get_nesting_level(schema: &Schema, branch: &str) -> i32 {
     let (Trunks(trunks), _) = schema.0.get(branch).unwrap();
 
-    let trunk_levels: Vec<i32> = trunks.iter().map(|trunk| get_nesting_level(schema, trunk)).collect();
+    let trunk_levels: Vec<i32> = trunks
+        .iter()
+        .map(|trunk| get_nesting_level(schema, trunk))
+        .collect();
 
     let level: i32 = *trunk_levels.iter().max().unwrap_or(&-1);
 
-    level+1
+    level + 1
 }
 
 pub fn sort_nesting_descending(schema: Schema) -> impl FnMut(&String, &String) -> Ordering {

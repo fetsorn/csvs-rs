@@ -23,11 +23,11 @@ fn mow_test() {
     let tests: Vec<MowTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
     for test in tests.iter() {
-        let entry: Entry = read_record(&test.initial).clone().try_into().unwrap();
+        let entry: Entry = read_record(&test.initial).try_into().unwrap();
 
-        let result: Vec<Grain> = mow(entry.clone(), &test.trait_, &test.thing);
+        let result: Vec<Grain> = mow(&entry, &test.trait_, &test.thing);
 
-        let result_json: Vec<Value> = result.iter().map(|i| i.clone().into_value()).collect();
+        let result_json: Vec<Value> = result.into_iter().map(|i| i.into_value()).collect();
 
         let expected_json: Vec<Value> = test
             .expected

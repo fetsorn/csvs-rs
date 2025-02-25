@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::OpenOptions;
 use std::fs::{rename, File};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use temp_dir::TempDir;
 use text_file_sort::sort::Sort;
 
@@ -24,19 +24,17 @@ struct Tablet {
     pub branch: String,
 }
 
-async fn sort_file(filepath: PathBuf) {
+async fn sort_file(filepath: &Path) {
     let temp_path = TempDir::new().unwrap();
 
     let output = temp_path.as_ref().join(filepath.file_name().unwrap());
 
-    let text_file_sort = Sort::new(vec![filepath.clone()], output.clone());
+    Sort::new(vec![filepath.to_path_buf()], output.to_path_buf()).sort().unwrap();
 
-    text_file_sort.sort().unwrap();
-
-    rename(output, filepath.clone()).unwrap();
+    rename(output, filepath).unwrap();
 }
 
-fn plan_insert(schema: Schema, query: Entry) -> Vec<Tablet> {
+fn plan_insert(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     let crown = find_crown(&schema, &query.base);
 
     let tablets = crown.iter().fold(vec![], |with_branch, branch| {
@@ -49,8 +47,8 @@ fn plan_insert(schema: Schema, query: Entry) -> Vec<Tablet> {
             .iter()
             .map(|trunk| Tablet {
                 filename: format!("{}-{}.csv", trunk, branch),
-                trunk: trunk.clone(),
-                branch: branch.clone(),
+                trunk: trunk.to_owned(),
+                branch: branch.to_owned(),
             })
             .collect();
 
@@ -68,8 +66,8 @@ fn insert_tablet<S: Stream<Item = Entry>>(
     let filepath = path.join(&tablet.filename);
 
     // create file if it doesn't exist
-    if fs::metadata(filepath.clone()).is_err() {
-        File::create(filepath.clone()).unwrap();
+    if fs::metadata(&filepath).is_err() {
+        File::create(&filepath).unwrap();
     }
 
     let file = OpenOptions::new()
@@ -86,12 +84,12 @@ fn insert_tablet<S: Stream<Item = Entry>>(
             // pass the query early on to start other tablet streams
             yield entry.clone();
 
-            let grains: Vec<Grain> = mow(entry, &tablet.trunk, &tablet.branch).iter().filter(|grain| grain.leaf_value.is_some()).cloned().collect();
+            let grains = mow(&entry, &tablet.trunk, &tablet.branch);
 
-            let lines: Vec<Line> = grains.iter().map(|grain| {
+            let lines: Vec<Line> = grains.iter().filter(|grain| grain.leaf_value.is_some()).map(|grain| {
                 Line {
-                    key: grain.clone().base_value.unwrap_or("".to_string()),
-                    value: grain.clone().leaf_value.unwrap_or("".to_string())
+                    key: match &grain.base_value { None => String::from(""), Some(s) => s.to_owned() },
+                    value: match &grain.leaf_value { None => String::from(""), Some(s) => s.to_owned() }
                 }
             }).collect();
 
@@ -106,13 +104,13 @@ async fn insert_record_stream<S: Stream<Item = Entry>>(
     input: S,
     path: PathBuf,
 ) -> impl Stream<Item = Entry> {
-    let schema = select_schema(path.clone()).await;
+    let schema = select_schema(&path).await;
 
     let mut strategy = vec![];
 
     stream! {
         for await query in input {
-            strategy = plan_insert(schema.clone(), query.clone());
+            strategy = plan_insert(&schema, &query);
 
             let query_stream = stream! {
                 yield query;
@@ -120,8 +118,8 @@ async fn insert_record_stream<S: Stream<Item = Entry>>(
 
             let mut stream: BoxStream<'static, Entry> = Box::pin(query_stream);
 
-            for tablet in strategy.clone() {
-                stream = Box::pin(insert_tablet(stream, path.clone(), tablet));
+            for tablet in &strategy {
+                stream = Box::pin(insert_tablet(stream, path.clone(), tablet.clone()));
             }
 
             for await entry in stream {
@@ -133,13 +131,13 @@ async fn insert_record_stream<S: Stream<Item = Entry>>(
             let filepath = path.join(&tablet.filename);
 
 
-            match fs::metadata(filepath.clone()) {
+            match fs::metadata(&filepath) {
                 Err(_) => return,
                 Ok(m) => if m.len() == 0 {
                     // remove file if it is empty
                     fs::remove_file(filepath).unwrap();
                 } else {
-                    sort_file(filepath).await;
+                    sort_file(&filepath).await;
                 }
             }
 

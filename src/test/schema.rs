@@ -1,7 +1,7 @@
 use crate::{
     schema::find_crown,
-    types::schema::{ Leaves, Schema, Trunks},
     types::entry::Entry,
+    types::schema::{Leaves, Schema, Trunks},
 };
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,7 @@ fn entry_into_test() {
 
         let entry: Entry = serde_json::from_str(&entry_string).unwrap();
 
-        let result: Schema = entry.clone().try_into().unwrap();
+        let result: Schema = entry.try_into().unwrap();
 
         let result_string: String = serde_json::to_string(&result).unwrap();
 
@@ -38,19 +38,19 @@ fn entry_into_test() {
 fn find_crown_test() {
     let schema = Schema(HashMap::from([
         (
-            "datum".to_string(),
+            "datum".to_owned(),
             (
                 Trunks(vec![]),
-                Leaves(vec!["date".to_string(), "name".to_string()]),
+                Leaves(vec!["date".to_owned(), "name".to_owned()]),
             ),
         ),
         (
-            "date".to_string(),
-            (Trunks(vec!["datum".to_string()]), Leaves(vec![])),
+            "date".to_owned(),
+            (Trunks(vec!["datum".to_owned()]), Leaves(vec![])),
         ),
         (
-            "name".to_string(),
-            (Trunks(vec!["datum".to_string()]), Leaves(vec![])),
+            "name".to_owned(),
+            (Trunks(vec!["datum".to_owned()]), Leaves(vec![])),
         ),
     ]));
 
@@ -58,5 +58,5 @@ fn find_crown_test() {
 
     crown.sort();
 
-    assert_eq!(crown.clone(), vec!["date", "datum", "name"]);
+    assert_eq!(crown, vec!["date", "datum", "name"]);
 }

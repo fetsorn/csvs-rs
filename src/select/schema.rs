@@ -1,6 +1,6 @@
 use super::line::select_line_stream;
-use super::types::tablet::Tablet;
 use super::types::state::State;
+use super::types::tablet::Tablet;
 use crate::types::entry::Entry;
 use crate::types::line::Line;
 use async_stream::stream;
@@ -24,20 +24,18 @@ pub fn select_schema_line_stream<S: Stream<Item = Line>>(
 
             let leaf = line.value;
 
-            let empty_leaves = vec![];
-
-            let leaves = schema_entry.leaves.get(&trunk).unwrap_or(&empty_leaves);
+            let leaves = match schema_entry.leaves.get(&trunk) { None => vec![], Some(ls) => ls.to_vec() };
 
             // append leaf
             let leaves_new = [leaves.clone(), vec![Entry {
-                base: trunk.clone(),
-                base_value: Some(leaf.clone()),
+                base: trunk.to_owned(),
+                base_value: Some(leaf.to_owned()),
                 leader_value: None,
                 leaves: HashMap::new()
             }]].concat();
 
             // set leaves of trunk
-            schema_entry.leaves.insert(trunk.clone(), leaves_new);
+            schema_entry.leaves.insert(trunk.to_owned(), leaves_new);
         }
 
         yield State {

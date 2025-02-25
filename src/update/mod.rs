@@ -29,28 +29,28 @@ struct State {
     is_match: bool,
 }
 
-fn plan_update(schema: Schema, query: Entry) -> Vec<Tablet> {
+fn plan_update(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     let is_schema = query.base == "_";
 
     if is_schema {
         return vec![Tablet {
-            filename: "_-_.csv".to_string(),
-            trunk: "_".to_string(),
-            branch: "_".to_string(),
+            filename: "_-_.csv".to_owned(),
+            trunk: "_".to_owned(),
+            branch: "_".to_owned(),
         }];
     }
 
     let crown = find_crown(&schema, &query.base);
 
     let tablets = crown.iter().fold(vec![], |with_branch, branch| {
-        let trunks = schema.0.get(branch).unwrap().clone().0 .0;
+        let trunks = &schema.0.get(branch).unwrap().0 .0;
 
         let tablets_new = trunks
             .iter()
             .map(|trunk| Tablet {
                 filename: format!("{}-{}.csv", trunk, branch),
-                trunk: trunk.clone(),
-                branch: branch.clone(),
+                trunk: trunk.to_owned(),
+                branch: branch.to_owned(),
             })
             .collect();
 
@@ -70,12 +70,12 @@ fn update_schema_line_stream(entry: Entry) -> impl Stream<Item = Line> {
             let mut leaves: Vec<Entry> = entry.leaves.get(&trunk).cloned().unwrap();
 
             leaves.sort_by(|a, b| a.base.cmp(&b.base).then(
-                a.clone().base_value.unwrap().cmp(&b.clone().base_value.unwrap())
+                a.base_value.as_ref().unwrap().cmp(&b.base_value.as_ref().unwrap())
             ));
 
             for leaf in leaves {
                 yield Line {
-                    key: trunk.clone(),
+                    key: trunk.to_owned(),
                     value: leaf.base_value.unwrap()
                 }
             }
@@ -88,11 +88,11 @@ fn update_line_stream<S: Stream<Item = Line>>(
     entry: Entry,
     tablet: Tablet,
 ) -> impl Stream<Item = Line> {
-    let grains = mow(entry, &tablet.trunk, &tablet.branch);
+    let grains = mow(&entry, &tablet.trunk, &tablet.branch);
 
     let mut keys: Vec<String> = grains
         .iter()
-        .map(|grain| grain.clone().base_value.unwrap())
+        .map(|grain| grain.base_value.as_ref().unwrap().to_owned())
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
         .collect::<Vec<String>>();
@@ -101,23 +101,26 @@ fn update_line_stream<S: Stream<Item = Line>>(
 
     let values: HashMap<String, Vec<String>> =
         grains.iter().fold(HashMap::new(), |with_grain, grain| {
-            let key = grain.clone().base_value.unwrap();
+            let key = grain.base_value.as_ref().unwrap();
 
-            if grain.clone().leaf_value.is_none() {
+            if grain.leaf_value.is_none() {
                 return with_grain;
             }
 
-            let value = grain.clone().leaf_value.unwrap();
+            let value = grain.leaf_value.as_ref().unwrap();
 
-            let values_old: Vec<String> = with_grain.get(&key).unwrap_or(&vec![]).to_vec();
+            let values_old: Vec<String> = match with_grain.get(key) {
+                None => vec![],
+                Some(vs) => vs.to_vec()
+            };
 
-            let mut values_new = [values_old, vec![value]].concat();
+            let mut values_new = [values_old, vec![value.to_owned()]].concat();
 
             values_new.sort();
 
-            let mut with_grain_new = with_grain.clone();
+            let mut with_grain_new = with_grain;
 
-            with_grain_new.insert(key, values_new);
+            with_grain_new.insert(key.to_owned(), values_new);
 
             with_grain_new
         });
@@ -130,38 +133,48 @@ fn update_line_stream<S: Stream<Item = Line>>(
     stream! {
         for await line in input {
 
-            let fst_is_new = state_intermediary.clone().fst.is_none() || state_intermediary.clone().fst.unwrap() != line.key;
+            let fst_is_new = state_intermediary.fst.is_none() || state_intermediary.fst.as_ref().unwrap() != &line.key;
 
             if state_intermediary.is_match && fst_is_new {
-                for value in values.get(&state_intermediary.clone().fst.unwrap()).unwrap_or(&vec![]) {
-                    yield Line {
-                        key: state_intermediary.clone().fst.unwrap(),
-                        value: value.clone()
-                    };
+                match values.get(state_intermediary.fst.as_ref().unwrap()) {
+                    None => (),
+                    Some(vs) => {
+                        for value in vs {
+                            yield Line {
+                                key: state_intermediary.fst.as_ref().unwrap().to_owned(),
+                                value: value.to_owned()
+                            };
+                        }
+                    }
                 }
 
-                keys = keys.clone().iter().filter(|k| **k != state_intermediary.clone().fst.unwrap()).cloned().collect();
+                keys = keys.iter().filter(|k| *k != state_intermediary.fst.as_ref().unwrap()).cloned().collect();
             }
 
             if fst_is_new {
-                let keys_between = keys.clone().into_iter().filter(|key| {
-                    let is_first: bool = state_intermediary.clone().fst.is_none();
+                let keys_between: Vec<String> = keys.iter().filter(|key| {
+                    let is_first: bool = state_intermediary.fst.is_none();
 
-                    let is_after: bool = is_first || state_intermediary.clone().fst.unwrap() <= *key;
+                    let is_after: bool = is_first || state_intermediary.fst.as_ref().unwrap() <= *key;
 
-                    let is_before: bool = *key < line.key;
+                    let is_before: bool = **key < line.key;
 
                     let is_between: bool = is_after && is_before;
 
                     is_between
-                });
+                }).cloned().collect();
 
                 for key in keys_between {
-                    for value in values.get(&key).unwrap_or(&vec![]) {
-                        yield Line {
-                            key: key.clone(),
-                            value: value.clone()
-                        };
+                    match values.get(&key) {
+                        None => (),
+                        Some(vs) => {
+                            for value in vs {
+                                yield Line {
+                                    key: key.to_owned(),
+                                    value: value.to_owned()
+                                };
+                            }
+                        }
                     }
 
                     keys = keys.iter().filter(|k| **k != key).cloned().collect();
@@ -181,11 +194,16 @@ fn update_line_stream<S: Stream<Item = Line>>(
         }
 
         for key in keys.clone() {
-            for value in values.get(&key).unwrap_or(&vec![]) {
-                yield Line {
-                    key: key.clone(),
-                    value: value.clone()
-                };
+            match values.get(&key) {
+                None => (),
+                Some(vs) => {
+                    for value in vs {
+                        yield Line {
+                            key: key.to_owned(),
+                            value: value.to_owned()
+                        };
+                    }
+                }
             }
 
             keys = keys.iter().filter(|k| **k != key).cloned().collect();
@@ -195,11 +213,11 @@ fn update_line_stream<S: Stream<Item = Line>>(
 
 fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
     stream! {
-        if fs::metadata(filepath.clone()).is_err() { File::create(filepath.clone()).unwrap(); }
+        if fs::metadata(&filepath).is_err() { File::create(&filepath).unwrap(); }
 
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
-            .from_reader(File::open(filepath.clone()).unwrap());
+            .from_reader(File::open(&filepath).unwrap());
 
         for result in rdr.deserialize() {
             let line: Line = result.unwrap();
@@ -225,11 +243,11 @@ fn update_tablet<S: Stream<Item = Entry>>(
 
         let temp_path = temp_d.as_ref().join(filepath.file_name().unwrap());
 
-        File::create(temp_path.clone()).unwrap();
+        File::create(&temp_path).unwrap();
 
         let temp_file = OpenOptions::new()
             .append(true)
-            .open(temp_path.clone())
+            .open(&temp_path)
             .expect("cannot open file");
 
         let mut wtr = csv::WriterBuilder::new()
@@ -242,7 +260,7 @@ fn update_tablet<S: Stream<Item = Entry>>(
 
             // duplicate code instead of reusing a boxpinned update stream
             if is_schema {
-                let update_stream = update_schema_line_stream(entry.clone());
+                let update_stream = update_schema_line_stream(entry);
 
                 pin_mut!(update_stream);
 
@@ -262,19 +280,19 @@ fn update_tablet<S: Stream<Item = Entry>>(
             }
         }
 
-        match fs::metadata(temp_path.clone()) {
+        match fs::metadata(&temp_path) {
             Err(_) => (),
             Ok(m) => if m.len() == 0 {
-                if fs::metadata(filepath.clone()).is_ok() {
-                    fs::remove_file(filepath.clone()).unwrap();
+                if fs::metadata(&filepath).is_ok() {
+                    fs::remove_file(&filepath).unwrap();
                 }
             } else {
                 // fs::rename fails with invalid cross-device link
-                fs::copy(temp_path, filepath.clone()).unwrap();
+                fs::copy(temp_path, &filepath).unwrap();
             }
         }
 
-        match fs::metadata(filepath.clone()) {
+        match fs::metadata(&filepath) {
             Err(_) => return,
             Ok(m) => if m.len() == 0 {
                 fs::remove_file(filepath).unwrap();
@@ -288,11 +306,11 @@ async fn update_record_stream<S: Stream<Item = Entry>>(
     input: S,
     path: PathBuf,
 ) -> impl Stream<Item = Entry> {
-    let schema = select_schema(path.clone()).await;
+    let schema = select_schema(&path).await;
 
     stream! {
         for await query in input {
-            let strategy = plan_update(schema.clone(), query.clone());
+            let strategy = plan_update(&schema, &query);
 
             let query_stream = stream! {
                 yield query;
@@ -300,7 +318,7 @@ async fn update_record_stream<S: Stream<Item = Entry>>(
 
             let mut stream: BoxStream<'static, Entry> = Box::pin(query_stream);
 
-            for tablet in strategy.clone() {
+            for tablet in strategy {
                 stream = Box::pin(update_tablet(stream, path.clone(), tablet));
             }
 

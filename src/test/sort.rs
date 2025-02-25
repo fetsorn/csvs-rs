@@ -1,7 +1,7 @@
 use crate::{
-    schema::{sort_nesting_descending, get_nesting_level, sort_nesting_ascending},
+    schema::{get_nesting_level, sort_nesting_ascending, sort_nesting_descending},
+    test::read_record,
     types::{entry::Entry, schema::Schema},
-    test::read_record
 };
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
@@ -17,14 +17,15 @@ struct LevelTest {
 
 #[test]
 fn level_test() {
-    let file = fs::File::open("./src/test/cases/get_nesting_level.json").expect("file should open read only");
+    let file = fs::File::open("./src/test/cases/get_nesting_level.json")
+        .expect("file should open read only");
 
     let tests: Vec<LevelTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
     for test in tests.iter() {
         let schema_record = read_record(&test.schema);
 
-        let schema = schema_record.clone().try_into().unwrap();
+        let schema = schema_record.try_into().unwrap();
 
         let level = get_nesting_level(&schema, &test.initial);
 
@@ -41,14 +42,15 @@ struct SortTest {
 
 #[test]
 fn sort_descending_test() {
-    let file = fs::File::open("./src/test/cases/sort_descending.json").expect("file should open read only");
+    let file = fs::File::open("./src/test/cases/sort_descending.json")
+        .expect("file should open read only");
 
     let tests: Vec<SortTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
     for test in tests.iter() {
         let schema_record = read_record(&test.schema);
 
-        let schema = schema_record.clone().try_into().unwrap();
+        let schema = schema_record.try_into().unwrap();
 
         let mut sorted = test.initial.clone();
 
@@ -60,14 +62,15 @@ fn sort_descending_test() {
 
 #[test]
 fn sort_ascending_test() {
-    let file = fs::File::open("./src/test/cases/sort_ascending.json").expect("file should open read only");
+    let file =
+        fs::File::open("./src/test/cases/sort_ascending.json").expect("file should open read only");
 
     let tests: Vec<SortTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
     for test in tests.iter() {
         let schema_record = read_record(&test.schema);
 
-        let schema = schema_record.clone().try_into().unwrap();
+        let schema = schema_record.try_into().unwrap();
 
         let mut sorted = test.initial.clone();
 

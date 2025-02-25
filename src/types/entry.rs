@@ -36,7 +36,7 @@ impl TryFrom<Value> for Entry {
                     Value::Null => panic!(""),
                     Value::Bool(_) => panic!(""),
                     Value::Number(_) => panic!(""),
-                    Value::String(s) => s.clone(),
+                    Value::String(s) => s.to_owned(),
                     Value::Array(_) => panic!(""),
                     Value::Object(_) => panic!(""),
                 };
@@ -46,7 +46,7 @@ impl TryFrom<Value> for Entry {
                         Value::Null => panic!(""),
                         Value::Bool(_) => panic!(""),
                         Value::Number(_) => panic!(""),
-                        Value::String(s) => Some(s.clone()),
+                        Value::String(s) => Some(s.to_owned()),
                         Value::Array(_) => panic!(""),
                         Value::Object(_) => panic!(""),
                     }
@@ -59,7 +59,7 @@ impl TryFrom<Value> for Entry {
                         Value::Null => panic!(""),
                         Value::Bool(_) => panic!(""),
                         Value::Number(_) => panic!(""),
-                        Value::String(s) => Some(s.clone()),
+                        Value::String(s) => Some(s.to_owned()),
                         Value::Array(_) => panic!(""),
                         Value::Object(_) => panic!(""),
                     }
@@ -78,27 +78,27 @@ impl TryFrom<Value> for Entry {
                             Value::Number(_) => panic!(""),
                             Value::String(s) => {
                                 vec![Entry {
-                                    base: leaf.to_string(),
-                                    base_value: Some(s.to_string()),
+                                    base: leaf.to_owned(),
+                                    base_value: Some(s.to_owned()),
                                     leader_value: None,
                                     leaves: HashMap::new(),
                                 }]
                             }
-                            Value::Array(ss) => ss
+                            Value::Array(vs) => vs
                                 .iter()
-                                .map(|s| match s {
+                                .map(|v| match v {
                                     Value::Null => panic!(""),
                                     Value::Bool(_) => panic!(""),
                                     Value::Number(_) => panic!(""),
                                     Value::String(s) => Entry {
-                                        base: leaf.to_string(),
-                                        base_value: Some(s.to_string()),
+                                        base: leaf.to_owned(),
+                                        base_value: Some(s.to_owned()),
                                         leader_value: None,
                                         leaves: HashMap::new(),
                                     },
                                     Value::Array(_) => panic!(""),
                                     Value::Object(_) => {
-                                        let e: Entry = s.clone().try_into().unwrap();
+                                        let e: Entry = v.clone().try_into().unwrap();
 
                                         e
                                     }
@@ -171,7 +171,7 @@ impl IntoValue for Entry {
         for (leaf, items) in self.leaves.iter() {
             for entry in items {
                 let leaf_value: Value = match entry.leaves.is_empty() {
-                    true => entry.base_value.clone().unwrap().to_string().into(),
+                    true => entry.base_value.as_ref().unwrap().to_owned().into(),
                     false => entry.clone().into_value(),
                 };
 
@@ -182,7 +182,7 @@ impl IntoValue for Entry {
                         Value::Bool(_) => panic!(""),
                         Value::Number(_) => panic!(""),
                         Value::String(s) => {
-                            value[&leaf] = vec![s.to_string().into(), leaf_value].into()
+                            value[&leaf] = vec![s.to_owned().into(), leaf_value].into()
                         }
                         Value::Object(o) => {
                             value[&leaf] = vec![o.clone().into(), leaf_value].into()

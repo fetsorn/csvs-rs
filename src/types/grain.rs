@@ -28,7 +28,7 @@ impl TryFrom<Value> for Grain {
                     Value::Null => panic!(""),
                     Value::Bool(_) => panic!(""),
                     Value::Number(_) => panic!(""),
-                    Value::String(s) => s.clone(),
+                    Value::String(s) => s.to_owned(),
                     Value::Array(_) => panic!(""),
                     Value::Object(_) => panic!(""),
                 };
@@ -38,7 +38,7 @@ impl TryFrom<Value> for Grain {
                         Value::Null => panic!(""),
                         Value::Bool(_) => panic!(""),
                         Value::Number(_) => panic!(""),
-                        Value::String(s) => Some(s.clone()),
+                        Value::String(s) => Some(s.to_owned()),
                         Value::Array(_) => panic!(""),
                         Value::Object(_) => panic!(""),
                     }
@@ -49,14 +49,14 @@ impl TryFrom<Value> for Grain {
                 let leaves: HashMap<String, Value> = v
                     .iter()
                     .filter(|&(key, _)| (*key != "_") && (**key != base))
-                    .map(|(key, val)| (key.clone(), val.clone()))
+                    .map(|(key, val)| (key.to_owned(), val.clone()))
                     .collect();
 
                 if leaves.is_empty() {
                     return Ok(Grain {
                         base: base.to_owned(),
                         base_value: base_value.to_owned(),
-                        leaf: "".to_string(),
+                        leaf: "".to_owned(),
                         leaf_value: None,
                     });
                 }
@@ -65,23 +65,21 @@ impl TryFrom<Value> for Grain {
                     panic!()
                 };
 
-                let keys: Vec<String> = leaves.keys().cloned().collect();
+                let leaf = leaves.keys().nth(0).unwrap();
 
-                let leaf: String = keys[0].clone();
-
-                let leaf_value: Option<String> = match &v[&leaf] {
+                let leaf_value: Option<String> = match &v[leaf] {
                     Value::Null => panic!(""),
                     Value::Bool(_) => panic!(""),
                     Value::Number(_) => panic!(""),
-                    Value::String(s) => Some(s.clone()),
+                    Value::String(s) => Some(s.to_owned()),
                     Value::Array(_) => panic!(""),
                     Value::Object(_) => panic!(""),
                 };
 
                 Ok(Grain {
                     base: base.to_owned(),
-                    base_value: base_value.to_owned(),
-                    leaf,
+                    base_value: base_value.clone(),
+                    leaf: leaf.to_owned(),
                     leaf_value,
                 })
             }

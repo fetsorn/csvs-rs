@@ -10,7 +10,7 @@ use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{PathBuf, Path};
 use tablet::select_tablet;
 use types::state::State;
 
@@ -24,7 +24,7 @@ pub fn select_schema_stream<S: Stream<Item = Entry>>(
             let is_schema = query.base == *"_";
 
             if is_schema {
-                let strategy = plan_select_schema(query.clone());
+                let strategy = plan_select_schema(&query);
 
                 let query_stream = stream! {
                     yield State {
@@ -40,7 +40,7 @@ pub fn select_schema_stream<S: Stream<Item = Entry>>(
 
                 let mut stream: BoxStream<'static, State> = Box::pin(query_stream);
 
-                for tablet in strategy.clone() {
+                for tablet in strategy {
                     stream = Box::pin(select_tablet(stream, path.clone(), tablet));
                 }
 
@@ -52,17 +52,17 @@ pub fn select_schema_stream<S: Stream<Item = Entry>>(
     }
 }
 
-pub async fn select_schema(path: PathBuf) -> Schema {
+pub async fn select_schema(path: &Path) -> Schema {
     let readable_stream = stream! {
         yield Entry {
-            base: "_".to_string(),
-            base_value: Some("_".to_string()),
+            base: "_".to_owned(),
+            base_value: Some("_".to_owned()),
             leader_value: None,
             leaves: HashMap::new(),
         };
     };
 
-    let s = select_schema_stream(readable_stream, path);
+    let s = select_schema_stream(readable_stream, path.to_path_buf());
 
     pin_mut!(s); // needed for iteration
 
@@ -81,11 +81,11 @@ pub fn select_record_stream<S: Stream<Item = Entry>>(
 ) -> impl Stream<Item = Entry> {
     stream! {
         for await query in input {
-            let is_schema = query.clone().base == *"_";
+            let is_schema = query.base == "_";
 
             if is_schema {
                 // TODO merge with select_schema_stream
-                let strategy = plan_select_schema(query.clone());
+                let strategy = plan_select_schema(&query);
 
                 let query_stream = stream! {
                     yield State {
@@ -101,7 +101,7 @@ pub fn select_record_stream<S: Stream<Item = Entry>>(
 
                 let mut stream: BoxStream<'static, State> = Box::pin(query_stream);
 
-                for tablet in strategy.clone() {
+                for tablet in strategy {
                     stream = Box::pin(select_tablet(stream, path.clone(), tablet));
                 }
 
@@ -109,9 +109,9 @@ pub fn select_record_stream<S: Stream<Item = Entry>>(
                     yield state.entry.unwrap();
                 }
             } else {
-                let schema = select_schema(path.clone()).await;
+                let schema = select_schema(&path).await;
 
-                let strategy = plan_select(schema.clone(), query.clone());
+                let strategy = plan_select(&schema, &query);
 
                 let query_push = query.clone();
 
@@ -130,32 +130,32 @@ pub fn select_record_stream<S: Stream<Item = Entry>>(
 
                 let mut stream: BoxStream<'static, State> = Box::pin(query_stream);
 
-                for tablet in strategy.clone() {
+                for tablet in strategy {
                     stream = Box::pin(select_tablet(stream, path.clone(), tablet));
                 }
 
                 for await state in stream {
                     // TODO move to leader stream
-                    let base_new = if state.entry.clone().unwrap().base != query.clone().base {
-                        query.clone().base
+                    let base_new = if &state.entry.as_ref().unwrap().base != &query.base {
+                        &query.base
                     } else {
-                        state.entry.clone().unwrap().base
+                        &state.entry.as_ref().unwrap().base
                     };
 
                     // if query has __, return leader
                     // TODO what if leader is nested? what if many leaders? use mow
-                    let entry_new = match query.clone().leader_value {
+                    let entry_new = match &query.leader_value {
                         None => {
                             let mut entry = state.entry.clone().unwrap();
 
-                            entry.base = base_new;
+                            entry.base = base_new.to_owned();
 
                             entry
                         },
                         Some(s) => {
-                            let bar = state.query.clone().unwrap();
+                            let bar = state.query.unwrap();
 
-                            let baz = bar.leaves.get(&s).unwrap();
+                            let baz = bar.leaves.get(s).unwrap();
 
                             baz.first().unwrap().clone()
                         }

@@ -1,18 +1,21 @@
-use crate::schema::{find_crown, sort_nesting_ascending, sort_nesting_descending};
-use crate::types::{entry::Entry, schema::{Leaves, Schema, Trunks}};
 use super::types::tablet::Tablet;
+use crate::schema::{find_crown, sort_nesting_ascending, sort_nesting_descending};
+use crate::types::{
+    entry::Entry,
+    schema::{Leaves, Schema, Trunks},
+};
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 
-pub fn plan_select_schema(query: Entry) -> Vec<Tablet> {
+pub fn plan_select_schema(query: &Entry) -> Vec<Tablet> {
     vec![Tablet {
-        filename: "_-_.csv".to_string(),
-        thing: "_".to_string(),
-        trait_: "_".to_string(),
+        filename: "_-_.csv".to_owned(),
+        thing: "_".to_owned(),
+        trait_: "_".to_owned(),
         thing_is_first: false,
         trait_is_first: true,
         passthrough: false,
-        base: "_".to_string(),
+        base: "_".to_owned(),
         trait_is_regex: false,
         querying: false,
         eager: false,
@@ -20,11 +23,11 @@ pub fn plan_select_schema(query: Entry) -> Vec<Tablet> {
     }]
 }
 
-fn gather_keys(query: Entry) -> Vec<String> {
+fn gather_keys(query: &Entry) -> Vec<String> {
     let leaves = query
         .leaves
         .keys()
-        .filter(|key| query.base_value.is_none() || **key != query.clone().base_value.unwrap());
+        .filter(|key| query.base_value.is_none() || **key != query.base_value.clone().unwrap());
 
     leaves.fold(vec![], |with_leaf, leaf| {
         let leaf_values = query.leaves.get(leaf).unwrap();
@@ -33,7 +36,7 @@ fn gather_keys(query: Entry) -> Vec<String> {
             let has_leaves = item.leaves.keys().len() > 0;
 
             let keys_item_new = if has_leaves {
-                gather_keys(item.clone())
+                gather_keys(item)
             } else {
                 vec![]
             };
@@ -41,28 +44,29 @@ fn gather_keys(query: Entry) -> Vec<String> {
             [with_key, keys_item_new].concat()
         });
 
-        [with_leaf, vec![leaf.to_string()], leaf_keys].concat()
+        [with_leaf, vec![leaf.to_owned()], leaf_keys].concat()
     })
 }
 
-pub fn plan_query(schema: Schema, query: Entry) -> Vec<Tablet> {
+pub fn plan_query(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     let mut queried_branches = gather_keys(query);
 
     queried_branches.sort_by(sort_nesting_ascending(schema.clone()));
 
     let queried_tablets = queried_branches.iter().fold(vec![], |with_branch, branch| {
-        let empty = (Trunks(vec![]), Leaves(vec![]));
-
-        let (Trunks(trunks), _) = schema.0.get(branch).unwrap_or(&empty);
+        let trunks = match schema.0.get(branch) {
+            None => vec![],
+            Some((Trunks(ts), _)) => ts.to_vec(),
+        };
 
         let tablets_new: Vec<Tablet> = trunks
             .iter()
             .map(|trunk| Tablet {
-                thing: trunk.to_string(),
-                trait_: branch.to_string(),
+                thing: trunk.to_owned(),
+                trait_: branch.to_owned(),
                 thing_is_first: true,
                 trait_is_first: false,
-                base: trunk.to_string(),
+                base: trunk.to_owned(),
                 filename: format!("{}-{}.csv", trunk, branch),
                 trait_is_regex: true,
                 passthrough: false,
@@ -78,19 +82,22 @@ pub fn plan_query(schema: Schema, query: Entry) -> Vec<Tablet> {
     queried_tablets
 }
 
-pub fn plan_options(schema: Schema, base: String) -> Vec<Tablet> {
+pub fn plan_options(schema: &Schema, base: &str) -> Vec<Tablet> {
     let empty = (Trunks(vec![]), Leaves(vec![]));
 
-    let (Trunks(trunks), Leaves(leaves)) = schema.0.get(&base).unwrap_or(&empty);
+    let (trunks, leaves) = match schema.0.get(base) {
+        None => (vec![], vec![]),
+        Some((Trunks(ts), Leaves(ls))) => (ts.to_vec(), ls.to_vec()),
+    };
 
     let trunk_tablets: Vec<Tablet> = trunks
         .iter()
         .map(|trunk| Tablet {
-            thing: base.to_string(),
-            trait_: trunk.to_string(),
+            thing: base.to_owned(),
+            trait_: trunk.to_owned(),
             thing_is_first: false,
             trait_is_first: false,
-            base: trunk.to_string(),
+            base: trunk.to_owned(),
             filename: format!("{}-{}.csv", trunk, base),
             trait_is_regex: true,
             passthrough: false,
@@ -103,11 +110,11 @@ pub fn plan_options(schema: Schema, base: String) -> Vec<Tablet> {
     let leaf_tablets = leaves
         .iter()
         .map(|leaf| Tablet {
-            thing: base.to_string(),
-            trait_: base.to_string(),
+            thing: base.to_owned(),
+            trait_: base.to_owned(),
             thing_is_first: true,
             trait_is_first: true,
-            base: base.to_string(),
+            base: base.to_owned(),
             filename: format!("{}-{}.csv", base, leaf),
             trait_is_regex: true,
             accumulating: true,
@@ -120,7 +127,7 @@ pub fn plan_options(schema: Schema, base: String) -> Vec<Tablet> {
     [leaf_tablets, trunk_tablets].concat()
 }
 
-pub fn plan_values(schema: Schema, query: Entry) -> Vec<Tablet> {
+pub fn plan_values(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     let mut crown: Vec<String> = find_crown(&schema, &query.base)
         .into_iter()
         .filter(|b| *b != query.base)
@@ -136,11 +143,11 @@ pub fn plan_values(schema: Schema, query: Entry) -> Vec<Tablet> {
         let tablets_new = trunks
             .iter()
             .map(|trunk| Tablet {
-                thing: branch.to_string(),
-                trait_: trunk.to_string(),
+                thing: branch.to_owned(),
+                trait_: trunk.to_owned(),
                 thing_is_first: false,
                 trait_is_first: true,
-                base: trunk.to_string(),
+                base: trunk.to_owned(),
                 filename: format!("{}-{}.csv", trunk, branch),
                 trait_is_regex: false,
                 accumulating: false,
@@ -156,13 +163,13 @@ pub fn plan_values(schema: Schema, query: Entry) -> Vec<Tablet> {
     value_tablets
 }
 
-pub fn plan_select(schema: Schema, query: Entry) -> Vec<Tablet> {
-    let strategy_query = plan_query(schema.clone(), query.clone());
+pub fn plan_select(schema: &Schema, query: &Entry) -> Vec<Tablet> {
+    let strategy_query = plan_query(schema, query);
 
     let strategy_base = if !strategy_query.is_empty() {
         strategy_query
     } else {
-        plan_options(schema.clone(), query.clone().base)
+        plan_options(schema, &query.base)
     };
 
     let strategy_value = plan_values(schema, query);

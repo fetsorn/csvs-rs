@@ -1,9 +1,9 @@
 use super::line::select_line_stream;
 use super::schema::select_schema_line_stream;
+use super::types::state::State;
 use super::types::tablet::Tablet;
 use crate::types::entry::Entry;
 use crate::types::line::Line;
-use super::types::state::State;
 use async_stream::stream;
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
@@ -15,7 +15,7 @@ use std::path::PathBuf;
 
 fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
     stream! {
-        if std::fs::metadata(filepath.clone()).is_err() {
+        if std::fs::metadata(&filepath).is_err() {
             return;
         }
 

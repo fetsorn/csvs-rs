@@ -24,11 +24,11 @@ fn sow_test() {
     let tests: Vec<SowTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
     for test in tests.iter() {
-        let entry: Entry = read_record(&test.initial).clone().try_into().unwrap();
+        let entry: Entry = read_record(&test.initial).try_into().unwrap();
 
-        let grain: Grain = read_record(&test.grain).clone().try_into().unwrap();
+        let grain: Grain = read_record(&test.grain).try_into().unwrap();
 
-        let result: Entry = sow(entry.clone(), grain.clone(), &test.trait_, &test.thing);
+        let result: Entry = sow(&entry, &grain, &test.trait_, &test.thing);
 
         let result_json: Value = result.into_value();
 

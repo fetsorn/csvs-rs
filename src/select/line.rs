@@ -1,7 +1,7 @@
+use super::types::state::State;
 use super::types::tablet::Tablet;
 use crate::record::mow::mow;
 use crate::record::sow::sow;
-use super::types::state::State;
 use crate::types::entry::Entry;
 use crate::types::grain::Grain;
 use crate::types::line::Line;
@@ -11,56 +11,64 @@ use futures_util::stream::StreamExt;
 use regex::Regex;
 use std::collections::HashMap;
 
-fn make_state_initial(state: State, tablet: Tablet) -> State {
+fn make_state_initial(state: &State, tablet: &Tablet) -> State {
     // in a querying tablet, set initial entry to the base of the tablet
     // and preserve the received entry for sowing grains later
     // if tablet base is different from previous entry base
     // sow previous entry into the initial entry
-    let is_same_base = tablet.querying && (state.query.is_some() && tablet.base == state.clone().query.unwrap().base);
+    let is_same_base = tablet.querying
+        && (state.query.is_some() && tablet.base == state.query.as_ref().unwrap().base);
 
     let do_discard = state.entry.is_none() || is_same_base;
 
     let entry_fallback = if do_discard {
         Entry {
-            base: tablet.clone().base,
+            base: tablet.base.to_owned(),
             base_value: None,
             leader_value: None,
             leaves: HashMap::new(),
         }
     } else {
-        state.clone().entry.unwrap()
+        state.entry.as_ref().unwrap().clone()
     };
 
     let do_sow = tablet.querying && !do_discard;
 
     let entry_initial = if do_sow {
         let foo = Entry {
-            base: tablet.clone().base,
+            base: tablet.base.to_owned(),
             base_value: None,
             leader_value: None,
             leaves: HashMap::new(),
         };
 
         let bar = Grain {
-            base: tablet.clone().base,
+            base: tablet.base.to_owned(),
             base_value: None,
-            leaf: state.entry.clone().unwrap().base,
-            leaf_value: state.entry.clone().unwrap().base_value,
+            leaf: state.entry.as_ref().unwrap().base.to_owned(),
+            leaf_value: state.entry.as_ref().unwrap().base_value.clone(),
         };
 
-        sow(foo, bar, &tablet.base, &state.entry.clone().unwrap().base)
+        let baz = sow(
+            &foo,
+            &bar,
+            &tablet.base,
+            &state.entry.as_ref().unwrap().base,
+        );
+
+        Some(baz)
     } else {
-        entry_fallback
+        Some(entry_fallback)
     };
 
-    let entry_base_changed =
-        state.entry.is_none() || state.entry.clone().unwrap().base != entry_initial.base;
+    let entry_base_changed = state.entry.is_none()
+        || state.entry.as_ref().unwrap().base != entry_initial.as_ref().unwrap().base;
 
     // if entry base changed forget thingQuerying
     let thing_querying_initial = if entry_base_changed {
         None
     } else {
-        state.clone().thing_querying
+        state.thing_querying.clone()
     };
 
     let is_value_tablet = !tablet.accumulating && !tablet.querying;
@@ -72,42 +80,41 @@ fn make_state_initial(state: State, tablet: Tablet) -> State {
 
     // TODO should this be Option instead and pass state.query without unwrapping?
     let query_initial = if do_swap {
-        Some(entry_initial.clone())
+        &entry_initial
     } else {
-        state.query
+        &state.query
     };
 
     State {
-        query: query_initial,
-        entry: Some(entry_initial),
+        query: query_initial.clone(),
+        entry: entry_initial.clone(),
         fst: None,
         is_match: false,
         has_match: false,
-        match_map: state.match_map,
+        match_map: state.match_map.clone(),
         thing_querying: thing_querying_initial,
     }
 }
 
 fn make_state_line(
-    state_initial: State,
-    state_old: State,
-    tablet: Tablet,
-    grains: Vec<Grain>,
+    state_initial: &State,
+    state_old: &State,
+    tablet: &Tablet,
+    grains: &Vec<Grain>,
     trait_: String,
     thing: String,
 ) -> State {
-
     // if tablet.filename == "datum-filepath.csv" {
-      // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grains).unwrap());
+    // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grains).unwrap());
     // };
 
     let mut state = state_old.clone();
 
     let grain_new = Grain {
-        base: tablet.clone().trait_,
-        base_value: Some(trait_.clone()),
-        leaf: tablet.clone().thing,
-        leaf_value: Some(thing.clone()),
+        base: tablet.trait_.to_owned(),
+        base_value: Some(trait_.to_owned()),
+        leaf: tablet.thing.to_owned(),
+        leaf_value: Some(thing.to_owned()),
     };
 
     // if tablet.filename == "datum-filepath.csv" {println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grain_new).unwrap())};
@@ -118,24 +125,24 @@ fn make_state_line(
 
             // println!("{} {} {}", tablet.filename, tablet.trait_, trait_);
             let foo = if tablet.trait_is_first {
-                grain.clone().base_value
+                grain.base_value.clone()
             } else {
-                grain.clone().leaf_value
+                grain.leaf_value.clone()
             };
 
             // if tablet.filename == "datum-filepath.csv" {println!("{} {} {:?}", tablet.filename, tablet.trait_is_first, foo.clone())};
 
             let is_match_grain = if tablet.trait_is_regex {
-                let re_str = foo.clone().unwrap_or("".to_string());
+                let re_str = foo.unwrap_or_else(|| String::from(""));
 
                 let re = Regex::new(&re_str).unwrap();
 
-                // if tablet.filename == "datum-filepath.csv" {println!("{} {} {} {}", tablet.filename, foo.unwrap_or("".to_string()), trait_, re.is_match(&trait_))};
+                // if tablet.filename == "datum-filepath.csv" {println!("{} {} {} {}", tablet.filename, foo.unwrap_or("".to_owned()), trait_, re.is_match(&trait_))};
 
                 re.is_match(&trait_)
             } else {
-                // if tablet.filename == "datum-filepath.csv" {println!("{}, {}, {}, {}", tablet.filename, foo.clone().unwrap_or("".to_string()), trait_, foo.clone().is_some() && foo.clone().unwrap() == trait_)};
-                foo.is_some() && foo.unwrap() == trait_
+                // if tablet.filename == "datum-filepath.csv" {println!("{}, {}, {}, {}", tablet.filename, foo.clone().unwrap_or("".to_owned()), trait_, foo.clone().is_some() && foo.clone().unwrap() == trait_)};
+                foo.is_some() && foo.as_ref().unwrap() == &trait_
             };
 
             // println!("{} {}", tablet.filename, is_match_grain);
@@ -145,7 +152,7 @@ fn make_state_line(
             let do_diff = tablet.querying && state_initial.thing_querying.is_some();
 
             let is_match_querying = if do_diff {
-                state_initial.clone().thing_querying.unwrap() == thing
+                state_initial.thing_querying.as_ref().unwrap() == &thing
             } else {
                 true
             };
@@ -157,8 +164,8 @@ fn make_state_line(
             // check here if thing was matched before
             // this will always be true for non-accumulating maps
             // so will be ignored
-            let match_is_new =
-                state.match_map.is_none() || state.match_map.clone().unwrap().get(&thing).is_none();
+            let match_is_new = state.match_map.is_none()
+                || state.match_map.as_ref().unwrap().get(&thing).is_none();
 
             state.is_match = if state.is_match {
                 state.is_match
@@ -167,7 +174,7 @@ fn make_state_line(
             };
 
             if tablet.querying && state.is_match {
-                state.thing_querying = Some(thing.clone())
+                state.thing_querying = Some(thing.to_owned())
             }
 
             if is_match && match_is_new && tablet.accumulating {
@@ -175,7 +182,7 @@ fn make_state_line(
                     .match_map
                     .as_mut()
                     .unwrap()
-                    .insert(thing.clone(), true);
+                    .insert(thing.to_owned(), true);
             }
 
             state.has_match = if state.has_match {
@@ -192,15 +199,13 @@ fn make_state_line(
         })
         .collect();
 
-
     // if tablet.filename == "datum-filepath.csv" {println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grains_new).unwrap())};
 
     state.entry = Some(
         grains_new
-            .clone()
-            .into_iter()
+            .iter()
             .fold(state.entry.unwrap(), |with_grain, grain| {
-                let bar = sow(with_grain.clone(), grain.clone(), &tablet.trait_, &tablet.thing);
+                let bar = sow(&with_grain, grain, &tablet.trait_, &tablet.thing);
 
                 // if tablet.filename == "datum-filepath.csv" {println!("{} {} {} {} {}", serde_json::to_string_pretty(&with_grain).unwrap(), serde_json::to_string_pretty(&grain).unwrap(), tablet.trait_, tablet.thing, serde_json::to_string_pretty(&bar).unwrap())};
 
@@ -213,7 +218,9 @@ fn make_state_line(
     // };
 
     if tablet.querying {
-        if state_initial.thing_querying.is_some() && thing == state_initial.thing_querying.unwrap() {
+        if state_initial.thing_querying.is_some()
+            && thing == *state_initial.thing_querying.as_ref().unwrap()
+        {
             // if previous querying tablet already matched thing
             // the trait in this record is likely to be the same
             // and might duplicate in the entry after sow
@@ -224,7 +231,7 @@ fn make_state_line(
             grains_new
                 .iter()
                 .fold(state.query.unwrap(), |with_grain, grain| {
-                    sow(with_grain, grain.clone(), &tablet.trait_, &tablet.thing)
+                    sow(&with_grain, &grain, &tablet.trait_, &tablet.thing)
                 }),
         );
     }
@@ -238,17 +245,17 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
     tablet: Tablet,
 ) -> impl Stream<Item = State> {
     //if tablet.filename == "datum-filepath.csv" {
-        // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&state).unwrap());
+    // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&state).unwrap());
     //};
 
-    let state_initial = make_state_initial(state.clone(), tablet.clone());
+    let state_initial = make_state_initial(&state, &tablet);
 
     // if tablet.filename == "datum-filepath.csv" {println!("{} {}", tablet.filename, serde_json::to_string_pretty(&state_initial).unwrap())};
 
     let mut state_current = state_initial.clone();
 
     let grains = mow(
-        state_current.query.clone().unwrap(),
+        state_current.query.as_ref().unwrap(),
         &tablet.trait_,
         &tablet.thing,
     );
@@ -265,7 +272,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
 
             // if tablet.filename == "datum-filepath.csv" {println!("{} {} {} {}", tablet.filename, line.key, line.value, fst_is_new)};
 
-            state_current.fst = Some(line.clone().key);
+            state_current.fst = Some(line.key.to_owned());
 
             let is_complete = state_current.is_match;
 
@@ -282,13 +289,13 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
 
                 // println!("{} {} 1", tablet.filename, tablet.passthrough);
                 let state_to_push = State {
-                    query: state_current.clone().query,
-                    entry: state_current.clone().entry,
+                    query: state_current.query,
+                    entry: state_current.entry,
                     fst: None,
                     is_match: false,
                     match_map: None,
                     has_match: false,
-                    thing_querying: state_current.clone().thing_querying,
+                    thing_querying: state_current.thing_querying.clone(),
                 };
 
                 // println!("push end of group {} {},{} {}", tablet.filename, line.key, line.value, state_to_push);
@@ -298,21 +305,21 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
                 // println!("{} {} 2", tablet.filename, tablet.passthrough);
                 // if tablet.accumulating {println!("?" )};
 
-                state_current.entry = state_initial.clone().entry;
+                state_current.entry = state_initial.entry.clone();
 
-                state_current.query = state_initial.clone().query;
+                state_current.query = state_initial.query.clone();
 
                 state_current.is_match = false;
             }
 
-            let trait_ = if tablet.trait_is_first {line.clone().key} else {line.clone().value};
+            let trait_ = if tablet.trait_is_first {line.key.to_owned()} else {line.value.to_owned()};
 
-            let thing = if tablet.thing_is_first {line.clone().key} else {line.clone().value};
+            let thing = if tablet.thing_is_first {line.key.to_owned()} else {line.value.to_owned()};
 
             // println!("{} {} {} {}", tablet.filename, tablet.passthrough, trait_, thing);
 
             // if tablet.accumulating {println!("{:?} \n {:#?}", tablet, line)};
-            state_current = make_state_line(state_initial.clone(), state_current.clone(), tablet.clone(), grains.clone(), trait_, thing);
+            state_current = make_state_line(&state_initial, &state_current, &tablet, &grains, trait_, thing);
 
             // if tablet.filename == "datum-filepath.csv" {
                 // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&state_current).unwrap())
@@ -335,9 +342,9 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
             // don't push matchMap here
             // because accumulating is not yet finished
             let state_to_push = State {
-                query: state_current.clone().query,
-                entry: state_current.clone().entry,
-                thing_querying: state_current.clone().thing_querying,
+                query: state_current.query.clone(),
+                entry: state_current.entry.clone(),
+                thing_querying: state_current.thing_querying,
                 fst: None,
                 is_match: false,
                 has_match: false,
