@@ -335,9 +335,7 @@ async fn update_record_stream<S: Stream<Item = Entry>>(
     }
 }
 
-pub async fn update_record(path: PathBuf, query: Vec<Entry>) -> Vec<Entry> {
-    let mut entries = vec![];
-
+pub async fn update_record(path: PathBuf, query: Vec<Entry>) {
     let readable_stream = stream! {
         for q in query {
             yield q;
@@ -349,8 +347,5 @@ pub async fn update_record(path: PathBuf, query: Vec<Entry>) -> Vec<Entry> {
     pin_mut!(s); // needed for iteration
 
     while let Some(entry) = s.next().await {
-        entries.push(entry);
     }
-
-    entries
 }

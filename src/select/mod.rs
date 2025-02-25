@@ -192,3 +192,19 @@ pub async fn select_record(path: PathBuf, query: Vec<Entry>) -> Vec<Entry> {
 
     entries
 }
+
+pub async fn print_record(path: PathBuf, query: Vec<Entry>) {
+    let readable_stream = stream! {
+        for q in query {
+            yield q;
+        }
+    };
+
+    let s = select_record_stream(readable_stream, path);
+
+    pin_mut!(s); // needed for iteration
+
+    while let Some(entry) = s.next().await {
+        println!("{}", entry);
+    }
+}

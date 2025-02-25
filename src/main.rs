@@ -10,7 +10,7 @@ mod types;
 mod update;
 mod create;
 use insert::insert_record;
-use select::select_record;
+use select::print_record;
 use update::update_record;
 use delete::delete_record;
 use create::create_dataset;
@@ -79,44 +79,28 @@ async fn main() {
 
             let query_record: types::entry::Entry = query_json.try_into().unwrap();
 
-            let entries = select_record(path, vec![query_record]).await;
-
-            for entry in entries.iter() {
-                println!("{}", entry);
-            }
+            print_record(path, vec![query_record]).await
         },
         Some(Commands::Delete { query }) => {
             let query_json: serde_json::Value = serde_json::from_str(query).unwrap();
 
             let query_record: types::entry::Entry = query_json.try_into().unwrap();
 
-            let entries = delete_record(path, vec![query_record]).await;
-
-            for entry in entries.iter() {
-                // println!("{}", entry);
-            }
+            delete_record(path, vec![query_record]).await;
         },
         Some(Commands::Update { query }) => {
             let query_json: serde_json::Value = serde_json::from_str(query).unwrap();
 
             let query_record: types::entry::Entry = query_json.try_into().unwrap();
 
-            let entries = update_record(path, vec![query_record]).await;
-
-            for entry in entries.iter() {
-                // println!("{}", entry);
-            }
+            update_record(path, vec![query_record]).await;
         },
         Some(Commands::Insert { query }) => {
             let query_json: serde_json::Value = serde_json::from_str(query).unwrap();
 
             let query_record: types::entry::Entry = query_json.try_into().unwrap();
 
-            let entries = insert_record(path, vec![query_record]).await;
-
-            for entry in entries.iter() {
-                // println!("{}", entry);
-            }
+            insert_record(path, vec![query_record]).await;
         },
         Some(Commands::Create { name }) => {
             create_dataset(path, name);
