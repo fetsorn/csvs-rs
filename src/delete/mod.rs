@@ -70,10 +70,16 @@ async fn delete_tablet(path: &Path, tablet: Tablet) {
 
     let mut wtr = csv::WriterBuilder::new()
         .has_headers(false)
+        .flexible(true)
         .from_writer(temp_file);
 
-    for result in rdr.deserialize() {
-        let line: Line = result.unwrap();
+    for result in rdr.records() {
+        let record = result.unwrap();
+
+        let line = Line {
+            key: match record.get(0) { None => String::from(""), Some(s) => s.to_owned() },
+            value: match record.get(1) { None => String::from(""), Some(s) => s.to_owned() }
+        };
 
         let trait_ = if tablet.trait_is_first {
             line.key.to_owned()

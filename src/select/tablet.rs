@@ -23,12 +23,18 @@ fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
 
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
+            .flexible(true)
             .from_reader(file);
 
-        for result in rdr.deserialize() {
-            let record: Line = result.unwrap();
+        for result in rdr.records() {
+            let record = result.unwrap();
 
-            yield record;
+            let line = Line {
+                key: match record.get(0) { None => String::from(""), Some(s) => s.to_owned() },
+                value: match record.get(1) { None => String::from(""), Some(s) => s.to_owned() }
+            };
+
+            yield line;
         }
     }
 }
