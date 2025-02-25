@@ -11,7 +11,7 @@ use temp_dir::TempDir;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct UpdateTest {
     initial: String,
-    query: String,
+    query: Vec<String>,
     expected: String,
 }
 
@@ -42,9 +42,9 @@ async fn update_test() {
         let expected_path = std::path::Path::new(&expected_str);
 
         // parse query to Entry
-        let query: Entry = read_record(&test.query).clone().try_into().unwrap();
+        let queries: Vec<Entry> = test.query.clone().into_iter().map(|query| read_record(&query).clone().try_into().unwrap()).collect();
 
-        update_record(temp_path.path().to_owned(), vec![query]).await;
+        update_record(temp_path.path().to_owned(), queries).await;
 
         if dir_diff::is_different(temp_path.path(), expected_path).unwrap() {
             for entry in fs::read_dir(temp_path.path()).unwrap() {

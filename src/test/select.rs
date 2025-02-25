@@ -12,7 +12,7 @@ use std::fs;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct SelectTest {
     initial: String,
-    query: Value,
+    query: Vec<Value>,
     expected: Vec<String>,
 }
 
@@ -28,9 +28,9 @@ async fn select_test() {
         let initial_path = std::path::Path::new(&initial_path);
 
         // parse query to Entry
-        let query: Entry = test.query.clone().try_into().unwrap();
+        let queries: Vec<Entry> = test.query.clone().into_iter().map(|query| query.try_into().unwrap()).collect();
 
-        let entries = select_record(initial_path.to_owned(), vec![query.clone()]).await;
+        let entries = select_record(initial_path.to_owned(), queries.clone()).await;
 
         let entries_json: Vec<Value> = entries.iter().map(|i| i.clone().into_value()).collect();
 
@@ -40,7 +40,7 @@ async fn select_test() {
             .map(|grain| read_record(grain))
             .collect();
 
-        println!("ask: {:#?}", query.into_value());
+        println!("ask: {:#?}", queries.into_iter().map(|query| query.into_value()));
         println!("want: {:#?}", expected_json);
         println!("got: {:#?}", entries_json);
 

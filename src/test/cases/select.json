@@ -1,87 +1,87 @@
 [
   {
     "initial": "default",
-    "query": { "_": "datum", "actname": "name1" },
+    "query": [{ "_": "datum", "actname": "name1" }],
     "expected": [ "record2001" ]
   },
   {
     "initial": "default",
-    "query": { "_": "datum", "actname": "name2" },
+    "query": [{ "_": "datum", "actname": "name2" }],
     "expected": [ "record2002" ]
   },
   {
     "initial": "default",
-    "query": { "_": "datum", "actname": "name3" },
+    "query": [{ "_": "datum", "actname": "name3" }],
     "expected": [ "record2003_unedited" ]
   },
   {
     "initial": "unordered",
-    "query": { "_": "datum", "actname": "name2" },
+    "query": [{ "_": "datum", "actname": "name2" }],
     "expected": [ "record2002" ]
   },
   {
     "initial": "array_simple",
-    "query": { "_": "datum", "actname": "name2" },
+    "query": [{ "_": "datum", "actname": "name2" }],
     "expected": [ "record_array_simple" ]
   },
   {
     "initial": "array_double",
-    "query": { "_": "datum", "datum": "value" },
+    "query": [{ "_": "datum", "datum": "value" }],
     "expected": [ "record_array_double_1", "record_array_double_2" ]
   },
   {
     "initial": "array",
-    "query": { "_": "datum", "actname": "name1" },
+    "query": [{ "_": "datum", "actname": "name1" }],
     "expected": [ "record_array" ]
   },
   {
     "initial": "array_added",
-    "query": { "_": "datum", "datum": "value1" },
+    "query": [{ "_": "datum", "datum": "value1" }],
     "expected": [ "record_array" ]
   },
   {
     "initial": "array_added",
-    "query": { "_": "datum", "export_tags": { "_": "export_tags", "export1_tag": { "_": "export1_tag", "export1_key": "longkey1" } } },
+    "query": [{ "_": "datum", "export_tags": { "_": "export_tags", "export1_tag": { "_": "export1_tag", "export1_key": "longkey1" } } }],
     "expected": [ "record_array" ]
   },
   {
     "initial": "default",
-    "query": { "_": "datum", "actname": "name.*" },
+    "query": [{ "_": "datum", "actname": "name.*" }],
     "expected": [ "record2003_unedited", "record2001", "record2002" ]
   },
   {
     "initial": "default",
-    "query": { "_": "datum", "actname": "name$" },
+    "query": [{ "_": "datum", "actname": "name$" }],
     "expected": [ ]
   },
   {
     "initial": "default",
-    "query": { "_": "datum", "actname": "^ame$" },
+    "query": [{ "_": "datum", "actname": "^ame$" }],
     "expected": [ ]
   },
   {
     "initial": "default",
-    "query": { "_": "datum", "filepath": { "_": "filepath", "moddate": ".*-01-01" } },
+    "query": [{ "_": "datum", "filepath": { "_": "filepath", "moddate": ".*-01-01" } }],
     "expected": [ "record2001", "record2002" ]
   },
   {
     "initial": "default",
-    "query": { "_": "datum", "actname": "name.*", "actdate": "2001-01-01" },
+    "query": [{ "_": "datum", "actname": "name.*", "actdate": "2001-01-01" }],
     "expected": [ "record2001" ]
   },
   {
     "initial": "array_added",
-    "query": { "_": "export1_tag", "export1_key": "longkey1" },
+    "query": [{ "_": "export1_tag", "export1_key": "longkey1" }],
     "expected": [ "record_export1_tag" ]
   },
   {
     "initial": "deleted_array_item",
-    "query": { "_": "export1_tag", "export1_key": "longkey1" },
+    "query": [{ "_": "export1_tag", "export1_key": "longkey1" }],
     "expected": [ "record_export1_tag" ]
   },
   {
     "initial": "added",
-    "query": { "_": "actname" },
+    "query": [{ "_": "actname" }],
     "expected": [
       "option_actname_3",
       "option_actname_1",
@@ -91,7 +91,7 @@
   },
   {
     "initial": "array",
-    "query": { "_": "export1_tag" },
+    "query": [{ "_": "export1_tag" }],
     "expected": [
       "option_export1_tag_1",
       "option_export1_tag_2"
@@ -99,7 +99,7 @@
   },
   {
     "initial": "array_free",
-    "query": { "_": "export1_tag" },
+    "query": [{ "_": "export1_tag" }],
     "expected": [
       "option_export1_tag_1",
       "option_export1_tag_2",
@@ -108,37 +108,37 @@
   },
   {
     "initial": "default",
-    "query": { "_": "_" },
+    "query": [{ "_": "_" }],
     "expected": [ "record_schema" ]
   },
   {
     "initial": "default",
-    "query": { "_": "datum", "__": "filepath", "actname": "name1" },
+    "query": [{ "_": "datum", "__": "filepath", "actname": "name1" }],
     "expected": [ "record2001_filepath" ]
   },
   {
     "initial": "array_literal",
-    "query": { "_": "datum", "actname": "name1" },
+    "query": [{ "_": "datum", "actname": "name1" }],
     "expected": [ "record_array_literal" ]
   },
   {
     "initial": "array",
-    "query": { "_": "export_tags", "export1_tag": "not" },
+    "query": [{ "_": "export_tags", "export1_tag": "not" }],
     "expected": []
   },
   {
     "initial": "array_long",
-    "query": { "_": "event", "actname": "not" },
+    "query": [{ "_": "event", "actname": "not" }],
     "expected": []
   },
   {
     "initial": "semicolon",
-    "query": { "_": "event", "event": "event1" },
+    "query": [{ "_": "event", "event": "event1" }],
     "expected": [ "record_semicolon" ]
   },
   {
     "initial": "two_roots",
-    "query": { "_": "datum", "actname": "name1" },
+    "query": [{ "_": "datum", "actname": "name1" }],
     "expected": [ "record2001" ]
   }
 ]

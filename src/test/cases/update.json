@@ -1,77 +1,82 @@
 [
   {
     "initial": "default",
-    "query": "record2001",
+    "query": [ "record2001" ],
     "expected": "default"
   },
   {
     "initial": "default",
-    "query": "record2003_edited",
+    "query": [ "record2003_edited" ],
     "expected": "edited"
   },
   {
     "initial": "default",
-    "query": "record_added",
+    "query": [ "record_added" ],
     "expected": "added"
   },
   {
     "initial": "array",
-    "query": "record_array_added",
+    "query": [ "record_array_added" ],
     "expected": "array_added"
   },
   {
     "initial": "array_empty",
-    "query": "record_array",
+    "query": [ "record_array" ],
     "expected": "array"
   },
   {
     "initial": "array",
-    "query": "record_added_array_item",
+    "query": [ "record_added_array_item" ],
     "expected": "added_array_item"
   },
   {
     "initial": "array",
-    "query": "record_edited_array_item",
+    "query": [ "record_edited_array_item" ],
     "expected": "edited_array_item"
   },
   {
     "initial": "array",
-    "query": "record_deleted_array_item",
+    "query": [ "record_deleted_array_item" ],
     "expected": "deleted_array_item"
   },
   {
     "initial": "array",
-    "query": "record_edited_array_item_object",
+    "query": [ "record_edited_array_item_object" ],
     "expected": "edited_array_item_object"
   },
   {
     "initial": "schema_none",
-    "query": "record_schema",
+    "query": [ "record_schema" ],
     "expected": "schema"
   },
   {
     "initial": "schema_none",
-    "query": "record_schema_literal",
+    "query": [ "record_schema_literal" ],
     "expected": "schema_literal"
   },
   {
     "initial": "default",
-    "query": "record_array_literal",
+    "query": [ "record_array_literal" ],
     "expected": "array_literal"
   },
   {
     "initial": "quotes",
-    "query": "record_quotes",
+    "query": [ "record_quotes" ],
     "expected": "quotes"
   },
   {
     "initial": "newline",
-    "query": "record_newline",
+    "query": [ "record_newline" ],
     "expected": "newline"
   },
   {
     "initial": "pipe",
-    "query": "record_pipe",
+    "query": [ "record_pipe" ],
     "expected": "pipe"
+  },
+  {
+    "initial": "empty",
+    "query": [ "record2001", "record2002", "record2003_unedited" ],
+    "expected": "default"
   }
 ]

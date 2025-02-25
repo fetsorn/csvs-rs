@@ -7,7 +7,7 @@ use temp_dir::TempDir;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct InsertTest {
     initial: String,
-    query: String,
+    query: Vec<String>,
     expected: String,
 }
 
@@ -38,9 +38,9 @@ async fn insert_test() {
         let expected_path = std::path::Path::new(&expected_str);
 
         // parse query to Entry
-        let query: Entry = read_record(&test.query).clone().try_into().unwrap();
+        let queries: Vec<Entry> = test.query.clone().into_iter().map(|query| read_record(&query).clone().try_into().unwrap()).collect();
 
-        insert_record(temp_path.path().to_owned(), vec![query]).await;
+        insert_record(temp_path.path().to_owned(), queries).await;
 
         if dir_diff::is_different(temp_path.path(), expected_path).unwrap() {
             for entry in fs::read_dir(temp_path.path()).unwrap() {
