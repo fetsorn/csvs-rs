@@ -98,17 +98,15 @@ fn make_state_initial(state: &State, tablet: &Tablet) -> State {
 
 fn make_state_line(
     state_initial: &State,
-    state_old: &State,
+    state: &mut State,
     tablet: &Tablet,
     grains: &Vec<Grain>,
     trait_: String,
     thing: String,
-) -> State {
+) {
     // if tablet.filename == "datum-filepath.csv" {
     // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grains).unwrap());
     // };
-
-    let mut state = state_old.clone();
 
     let grain_new = Grain {
         base: tablet.trait_.to_owned(),
@@ -118,125 +116,109 @@ fn make_state_line(
     };
 
     // if tablet.filename == "datum-filepath.csv" {println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grain_new).unwrap())};
-    let grains_new: Vec<Grain> = grains
-        .iter()
-        .filter_map(|grain| {
-            // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grain).unwrap());
+    for grain in grains {
+        // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grain).unwrap());
 
-            // println!("{} {} {}", tablet.filename, tablet.trait_, trait_);
-            let foo = if tablet.trait_is_first {
-                grain.base_value.clone()
-            } else {
-                grain.leaf_value.clone()
+        // println!("{} {} {}", tablet.filename, tablet.trait_, trait_);
+        let foo = if tablet.trait_is_first {
+            grain.base_value.as_ref()
+        } else {
+            grain.leaf_value.as_ref()
+        };
+
+        // if tablet.filename == "datum-filepath.csv" {println!("{} {} {:?}", tablet.filename, tablet.trait_is_first, foo.clone())};
+
+        let is_match_grain = if tablet.trait_is_regex {
+            let re_str = match foo {
+                None => String::from(""),
+                Some(s) => s.to_owned(),
             };
 
-            // if tablet.filename == "datum-filepath.csv" {println!("{} {} {:?}", tablet.filename, tablet.trait_is_first, foo.clone())};
+            let re = Regex::new(&re_str).unwrap();
 
-            let is_match_grain = if tablet.trait_is_regex {
-                let re_str = foo.unwrap_or_else(|| String::from(""));
+            // if tablet.filename == "datum-filepath.csv" {println!("{} {} {} {}", tablet.filename, foo.unwrap_or("".to_owned()), trait_, re.is_match(&trait_))};
 
-                let re = Regex::new(&re_str).unwrap();
+            re.is_match(&trait_)
+        } else {
+            // if tablet.filename == "datum-filepath.csv" {println!("{}, {}, {}, {}", tablet.filename, foo.clone().unwrap_or("".to_owned()), trait_, foo.clone().is_some() && foo.clone().unwrap() == trait_)};
+            foo.is_some() && foo.unwrap() == &trait_
+        };
 
-                // if tablet.filename == "datum-filepath.csv" {println!("{} {} {} {}", tablet.filename, foo.unwrap_or("".to_owned()), trait_, re.is_match(&trait_))};
+        // println!("{} {}", tablet.filename, is_match_grain);
 
-                re.is_match(&trait_)
-            } else {
-                // if tablet.filename == "datum-filepath.csv" {println!("{}, {}, {}, {}", tablet.filename, foo.clone().unwrap_or("".to_owned()), trait_, foo.clone().is_some() && foo.clone().unwrap() == trait_)};
-                foo.is_some() && foo.as_ref().unwrap() == &trait_
-            };
+        // when querying also match literal trait from the query
+        // otherwise always true
+        let do_diff = tablet.querying && state_initial.thing_querying.is_some();
 
-            // println!("{} {}", tablet.filename, is_match_grain);
+        let is_match_querying = if do_diff {
+            state_initial.thing_querying.as_ref().unwrap() == &thing
+        } else {
+            true
+        };
 
-            // when querying also match literal trait from the query
-            // otherwise always true
-            let do_diff = tablet.querying && state_initial.thing_querying.is_some();
+        let is_match = is_match_grain && is_match_querying;
 
-            let is_match_querying = if do_diff {
-                state_initial.thing_querying.as_ref().unwrap() == &thing
-            } else {
-                true
-            };
+        // accumulating tablets find all values
+        // matched at least once across the dataset
+        // check here if thing was matched before
+        // this will always be true for non-accumulating maps
+        // so will be ignored
+        let match_is_new =
+            state.match_map.is_none() || state.match_map.as_ref().unwrap().get(&thing).is_none();
 
-            let is_match = is_match_grain && is_match_querying;
+        state.is_match = if state.is_match {
+            state.is_match
+        } else {
+            is_match && match_is_new
+        };
 
-            // accumulating tablets find all values
-            // matched at least once across the dataset
-            // check here if thing was matched before
-            // this will always be true for non-accumulating maps
-            // so will be ignored
-            let match_is_new = state.match_map.is_none()
-                || state.match_map.as_ref().unwrap().get(&thing).is_none();
+        if tablet.querying && state.is_match {
+            state.thing_querying = Some(thing.to_owned())
+        }
 
-            state.is_match = if state.is_match {
-                state.is_match
-            } else {
-                is_match && match_is_new
-            };
+        if is_match && match_is_new && tablet.accumulating {
+            state
+                .match_map
+                .as_mut()
+                .unwrap()
+                .insert(thing.to_owned(), true);
+        }
 
-            if tablet.querying && state.is_match {
-                state.thing_querying = Some(thing.to_owned())
+        state.has_match = if state.has_match {
+            state.has_match
+        } else {
+            state.is_match
+        };
+
+        if is_match && match_is_new {
+            state.entry = Some(sow(
+                state.entry.as_ref().unwrap(),
+                &grain_new,
+                &tablet.trait_,
+                &tablet.thing,
+            ));
+
+            if tablet.querying {
+                // if previous querying tablet already matched thing
+                // the trait in this record is likely to be the same
+                // and might duplicate in the entry after sow
+                if !(state_initial.thing_querying.is_some()
+                    && thing == *state_initial.thing_querying.as_ref().unwrap())
+                {
+                    state.query = Some(sow(
+                        state.query.as_ref().unwrap(),
+                        &grain_new,
+                        &tablet.trait_,
+                        &tablet.thing,
+                    ));
+                }
             }
-
-            if is_match && match_is_new && tablet.accumulating {
-                state
-                    .match_map
-                    .as_mut()
-                    .unwrap()
-                    .insert(thing.to_owned(), true);
-            }
-
-            state.has_match = if state.has_match {
-                state.has_match
-            } else {
-                state.is_match
-            };
-
-            if is_match && match_is_new {
-                return Some(grain_new.clone());
-            }
-
-            None
-        })
-        .collect();
-
-    // if tablet.filename == "datum-filepath.csv" {println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grains_new).unwrap())};
-
-    state.entry = Some(
-        grains_new
-            .iter()
-            .fold(state.entry.unwrap(), |with_grain, grain| {
-                let bar = sow(&with_grain, grain, &tablet.trait_, &tablet.thing);
-
-                // if tablet.filename == "datum-filepath.csv" {println!("{} {} {} {} {}", serde_json::to_string_pretty(&with_grain).unwrap(), serde_json::to_string_pretty(&grain).unwrap(), tablet.trait_, tablet.thing, serde_json::to_string_pretty(&bar).unwrap())};
-
-                bar
-            }),
-    );
+        }
+    }
 
     // if tablet.filename == "datum-filepath.csv" {
     // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&state.entry).unwrap());
     // };
-
-    if tablet.querying {
-        if state_initial.thing_querying.is_some()
-            && thing == *state_initial.thing_querying.as_ref().unwrap()
-        {
-            // if previous querying tablet already matched thing
-            // the trait in this record is likely to be the same
-            // and might duplicate in the entry after sow
-            return state;
-        }
-
-        state.query = Some(
-            grains_new
-                .iter()
-                .fold(state.query.unwrap(), |with_grain, grain| {
-                    sow(&with_grain, &grain, &tablet.trait_, &tablet.thing)
-                }),
-        );
-    }
-
-    state
 }
 
 pub fn select_line_stream<S: Stream<Item = Line>>(
@@ -319,7 +301,7 @@ pub fn select_line_stream<S: Stream<Item = Line>>(
             // println!("{} {} {} {}", tablet.filename, tablet.passthrough, trait_, thing);
 
             // if tablet.accumulating {println!("{:?} \n {:#?}", tablet, line)};
-            state_current = make_state_line(&state_initial, &state_current, &tablet, &grains, trait_, thing);
+            make_state_line(&state_initial, &mut state_current, &tablet, &grains, trait_, thing);
 
             // if tablet.filename == "datum-filepath.csv" {
                 // println!("{} {}", tablet.filename, serde_json::to_string_pretty(&state_current).unwrap())
