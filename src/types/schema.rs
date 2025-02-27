@@ -1,3 +1,4 @@
+use crate::error::{Error, Result};
 use crate::types::entry::Entry;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -12,53 +13,73 @@ pub struct Leaves(pub Vec<String>);
 pub struct Trunks(pub Vec<String>);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Schema(pub HashMap<String, (Trunks, Leaves)>);
+pub struct Branch {
+    pub trunks: Trunks,
+    pub leaves: Leaves,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Schema(pub HashMap<String, Branch>);
 
 impl TryFrom<Entry> for Schema {
-    type Error = ();
+    type Error = Error;
 
-    fn try_from(entry: Entry) -> Result<Self, Self::Error> {
+    fn try_from(entry: Entry) -> Result<Self> {
         if entry.base != "_" {
-            return Err(());
+            return Err(Error::from_message("base is not _"));
         }
 
-        let node_map: HashMap<String, (Trunks, Leaves)> =
+        let node_map: HashMap<String, Branch> =
             entry
                 .leaves
                 .iter()
                 .fold(HashMap::new(), |with_trunk, (trunk, leaves)| {
-                    leaves.iter().map(|e| e.base_value.as_ref().unwrap()).fold(
+                    leaves.iter().filter_map(|e| e.base_value.as_ref()).fold(
                         with_trunk,
-                        |with_leaf, leaf| {
-                            let mut node_map_new = with_leaf.clone();
+                        |mut with_leaf, leaf| {
+                            let trunk_branch = match with_leaf.get(trunk) {
+                                None => Branch {
+                                    trunks: Trunks(vec![]),
+                                    leaves: Leaves(vec![]),
+                                },
+                                Some(vs) => vs.clone(),
+                            };
 
-                            let (Trunks(trunk_trunks_old), Leaves(trunk_leaves_old)) =
-                                match with_leaf.get(trunk) {
-                                    None => (Trunks(vec![]), Leaves(vec![])),
-                                    Some(vs) => vs.clone(),
-                                };
-
-                            let trunk_trunks = Trunks(trunk_trunks_old);
+                            let trunk_trunks = trunk_branch.trunks.clone();
 
                             let trunk_leaves =
-                                Leaves([trunk_leaves_old, vec![leaf.clone()]].concat());
+                                Leaves([&trunk_branch.leaves.0[..], &[leaf.clone()]].concat());
 
-                            node_map_new.insert(trunk.to_owned(), (trunk_trunks, trunk_leaves));
+                            with_leaf.insert(
+                                trunk.to_owned(),
+                                Branch {
+                                    trunks: trunk_trunks,
+                                    leaves: trunk_leaves,
+                                },
+                            );
 
-                            let (Trunks(leaf_trunks_old), Leaves(leaf_leaves_old)) =
-                                match with_leaf.get(leaf) {
-                                    None => (Trunks(vec![]), Leaves(vec![])),
-                                    Some(vs) => vs.clone(),
-                                };
+                            let leaf_branch = match with_leaf.get(leaf) {
+                                None => Branch {
+                                    trunks: Trunks(vec![]),
+                                    leaves: Leaves(vec![]),
+                                },
+                                Some(vs) => vs.clone(),
+                            };
 
                             let leaf_trunks =
-                                Trunks([leaf_trunks_old, vec![trunk.to_owned()]].concat());
+                                Trunks([&leaf_branch.trunks.0[..], &[trunk.to_owned()]].concat());
 
-                            let leaf_leaves = Leaves(leaf_leaves_old);
+                            let leaf_leaves = leaf_branch.leaves;
 
-                            node_map_new.insert(leaf.to_owned(), (leaf_trunks, leaf_leaves));
+                            with_leaf.insert(
+                                leaf.to_owned(),
+                                Branch {
+                                    trunks: leaf_trunks,
+                                    leaves: leaf_leaves,
+                                },
+                            );
 
-                            node_map_new
+                            with_leaf
                         },
                     )
                 });
@@ -68,10 +89,10 @@ impl TryFrom<Entry> for Schema {
 }
 
 impl TryFrom<Value> for Schema {
-    type Error = ();
+    type Error = Error;
 
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
-        let entry: Entry = value.try_into().unwrap();
+    fn try_from(value: Value) -> Result<Self> {
+        let entry: Entry = value.try_into()?;
 
         entry.try_into()
     }

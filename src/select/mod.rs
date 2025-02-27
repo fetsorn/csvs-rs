@@ -1,11 +1,12 @@
 use crate::types::{entry::Entry, schema::Schema};
+use crate::error::{Error, Result};
 mod line;
 mod types;
 mod strategy;
 mod schema;
 use strategy::{plan_select, plan_select_schema};
 mod tablet;
-use async_stream::stream;
+use async_stream::{try_stream, stream};
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
@@ -14,19 +15,21 @@ use std::path::{PathBuf, Path};
 use tablet::select_tablet;
 use types::state::State;
 
-pub fn select_schema_stream<S: Stream<Item = Entry>>(
+pub fn select_schema_stream<S: Stream<Item = Result<Entry>>>(
     input: S,
     path: PathBuf,
-) -> impl Stream<Item = Entry> {
-    stream! {
+) -> impl Stream<Item = Result<Entry>> {
+    try_stream! {
         for await query in input {
+            let query = query?;
+
             // TODO merge with select_record_stream
             let is_schema = query.base == *"_";
 
             if is_schema {
                 let strategy = plan_select_schema(&query);
 
-                let query_stream = stream! {
+                let query_stream = try_stream! {
                     yield State {
                         entry: None,
                         query: Some(query),
@@ -38,22 +41,27 @@ pub fn select_schema_stream<S: Stream<Item = Entry>>(
                     };
                 };
 
-                let mut stream: BoxStream<'static, State> = Box::pin(query_stream);
+                let mut stream: BoxStream<'static, Result<State>> = Box::pin(query_stream);
 
                 for tablet in strategy {
                     stream = Box::pin(select_tablet(stream, path.clone(), tablet));
                 }
 
                 for await state in stream {
-                    yield state.entry.unwrap();
+                    let state = state?;
+
+                    match state.entry {
+                        None => (),
+                        Some(e) => yield e
+                    }
                 }
             } ;
         }
     }
 }
 
-pub async fn select_schema(path: &Path) -> Schema {
-    let readable_stream = stream! {
+pub async fn select_schema(path: &Path) -> Result<Schema> {
+    let readable_stream = try_stream! {
         yield Entry {
             base: "_".to_owned(),
             base_value: Some("_".to_owned()),
@@ -69,25 +77,29 @@ pub async fn select_schema(path: &Path) -> Schema {
     let mut entries = vec![];
 
     while let Some(entry) = s.next().await {
+        let entry = entry?;
+
         entries.push(entry);
     }
 
-    entries[0].clone().try_into().unwrap()
+    Ok(entries[0].clone().try_into()?)
 }
 
-pub fn select_record_stream<S: Stream<Item = Entry>>(
+pub fn select_record_stream<S: Stream<Item = Result<Entry>>>(
     input: S,
     path: PathBuf,
-) -> impl Stream<Item = Entry> {
-    stream! {
+) -> impl Stream<Item = Result<Entry>> {
+    try_stream! {
         for await query in input {
+            let query = query?;
+
             let is_schema = query.base == "_";
 
             if is_schema {
                 // TODO merge with select_schema_stream
                 let strategy = plan_select_schema(&query);
 
-                let query_stream = stream! {
+                let query_stream = try_stream! {
                     yield State {
                         entry: None,
                         query: Some(query),
@@ -99,23 +111,28 @@ pub fn select_record_stream<S: Stream<Item = Entry>>(
                     };
                 };
 
-                let mut stream: BoxStream<'static, State> = Box::pin(query_stream);
+                let mut stream: BoxStream<'static, Result<State>> = Box::pin(query_stream);
 
                 for tablet in strategy {
                     stream = Box::pin(select_tablet(stream, path.clone(), tablet));
                 }
 
                 for await state in stream {
-                    yield state.entry.unwrap();
+                    let state = state?;
+
+                    match state.entry {
+                        None => (),
+                        Some(e) => yield e
+                    }
                 }
             } else {
-                let schema = select_schema(&path).await;
+                let schema = select_schema(&path).await?;
 
                 let strategy = plan_select(&schema, &query);
 
                 let query_push = query.clone();
 
-                let query_stream = stream! {
+                let query_stream = try_stream! {
                     yield State {
                         entry: None,
                         query: Some(query_push),
@@ -128,44 +145,67 @@ pub fn select_record_stream<S: Stream<Item = Entry>>(
                 };
 
 
-                let mut stream: BoxStream<'static, State> = Box::pin(query_stream);
+                let mut stream: BoxStream<'static, Result<State>> = Box::pin(query_stream);
 
                 for tablet in strategy {
                     stream = Box::pin(select_tablet(stream, path.clone(), tablet));
                 }
 
                 for await state in stream {
+                    let state = state?;
+
                     // TODO move to leader stream
-                    let base_new = if &state.entry.as_ref().unwrap().base != &query.base {
-                        &query.base
-                    } else {
-                        &state.entry.as_ref().unwrap().base
+                    let base_new = match &state.entry {
+                        None => panic!("unreachable"),
+                        Some(e) => if e.base == query.base {
+                            &e.base
+                        } else {
+                            &query.base
+                        }
                     };
 
                     // if query has __, return leader
                     // TODO what if leader is nested? what if many leaders? use mow
-                    let entry_new = match &query.leader_value {
+                    match &query.leader_value {
                         None => {
-                            let mut entry = state.entry.clone().unwrap();
+                            match &state.entry {
+                                None => (),
+                                Some(e) => {
+                                    let mut entry = e.clone();
 
-                            entry.base = base_new.to_owned();
+                                    entry.base = base_new.to_owned();
 
-                            entry
+                                    // do not return search result
+                                    // if state comes from the end of accumulating
+                                    if state.match_map.is_none() {
+                                        yield entry;
+                                    }
+                                }
+                            }
                         },
                         Some(s) => {
-                            let bar = state.query.unwrap();
-
-                            let baz = bar.leaves.get(s).unwrap();
-
-                            baz.first().unwrap().clone()
+                            match &state.query {
+                                None => (),
+                                Some(q) => {
+                                    match q.leaves.get(s) {
+                                        None => (),
+                                        Some(ls) => {
+                                            match ls.first() {
+                                               None => (),
+                                                Some(l) => {
+                                                    // do not return search result
+                                                    // if state comes from the end of accumulating
+                                                    if state.match_map.is_none() {
+                                                        yield l.clone();
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     };
-
-                    // do not return search result
-                    // if state comes from the end of accumulating
-                    if state.match_map.is_none() {
-                        yield entry_new;
-                    }
                 }
             };
 
@@ -173,10 +213,10 @@ pub fn select_record_stream<S: Stream<Item = Entry>>(
     }
 }
 
-pub async fn select_record(path: PathBuf, query: Vec<Entry>) -> Vec<Entry> {
+pub async fn select_record(path: PathBuf, query: Vec<Entry>) -> Result<Vec<Entry>> {
     let mut entries = vec![];
 
-    let readable_stream = stream! {
+    let readable_stream = try_stream! {
         for q in query {
             yield q;
         }
@@ -187,14 +227,16 @@ pub async fn select_record(path: PathBuf, query: Vec<Entry>) -> Vec<Entry> {
     pin_mut!(s); // needed for iteration
 
     while let Some(entry) = s.next().await {
+        let entry = entry?;
+
         entries.push(entry);
     }
 
-    entries
+    Ok(entries)
 }
 
-pub async fn print_record(path: PathBuf, query: Vec<Entry>) {
-    let readable_stream = stream! {
+pub async fn print_record(path: PathBuf, query: Vec<Entry>) -> Result<()> {
+    let readable_stream = try_stream! {
         for q in query {
             yield q;
         }
@@ -205,6 +247,10 @@ pub async fn print_record(path: PathBuf, query: Vec<Entry>) {
     pin_mut!(s); // needed for iteration
 
     while let Some(entry) = s.next().await {
+        let entry = entry?;
+
         println!("{}", entry);
     }
+
+    Ok(())
 }

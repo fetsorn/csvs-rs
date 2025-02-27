@@ -1,4 +1,5 @@
 #![allow(warnings)]
+use crate::error::{Error, Result};
 use clap::{Parser, Subcommand};
 mod delete;
 mod insert;
@@ -6,6 +7,7 @@ mod record;
 mod schema;
 mod select;
 mod test;
+mod error;
 mod types;
 mod update;
 mod create;
@@ -63,42 +65,42 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let path = match cli.path {
         Some(p) => std::path::Path::new(&p).to_owned(),
-        None => env::current_dir().unwrap(),
+        None => env::current_dir()?,
     };
 
     // println!("Hello {}!", path.display());
 
     match &cli.command {
         Some(Commands::Select { query }) => {
-            let query_json: serde_json::Value = serde_json::from_str(query).unwrap();
+            let query_json: serde_json::Value = serde_json::from_str(query)?;
 
-            let query_record: types::entry::Entry = query_json.try_into().unwrap();
+            let query_record: types::entry::Entry = query_json.try_into()?;
 
-            print_record(path, vec![query_record]).await
+            print_record(path, vec![query_record]).await?
         },
         Some(Commands::Delete { query }) => {
-            let query_json: serde_json::Value = serde_json::from_str(query).unwrap();
+            let query_json: serde_json::Value = serde_json::from_str(query)?;
 
-            let query_record: types::entry::Entry = query_json.try_into().unwrap();
+            let query_record: types::entry::Entry = query_json.try_into()?;
 
             delete_record(path, vec![query_record]).await;
         },
         Some(Commands::Update { query }) => {
-            let query_json: serde_json::Value = serde_json::from_str(query).unwrap();
+            let query_json: serde_json::Value = serde_json::from_str(query)?;
 
-            let query_record: types::entry::Entry = query_json.try_into().unwrap();
+            let query_record: types::entry::Entry = query_json.try_into()?;
 
             update_record(path, vec![query_record]).await;
         },
         Some(Commands::Insert { query }) => {
-            let query_json: serde_json::Value = serde_json::from_str(query).unwrap();
+            let query_json: serde_json::Value = serde_json::from_str(query)?;
 
-            let query_record: types::entry::Entry = query_json.try_into().unwrap();
+            let query_record: types::entry::Entry = query_json.try_into()?;
 
             insert_record(path, vec![query_record]).await;
         },
@@ -109,4 +111,6 @@ async fn main() {
             // show help
         },
     }
+
+    Ok(())
 }

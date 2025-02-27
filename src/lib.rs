@@ -1,5 +1,6 @@
 #![allow(warnings)]
 pub mod delete;
+pub mod error;
 pub mod insert;
 pub mod record;
 pub mod schema;

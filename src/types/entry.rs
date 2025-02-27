@@ -1,4 +1,5 @@
 use super::into_value::IntoValue;
+use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -21,64 +22,63 @@ impl fmt::Display for Entry {
 }
 
 impl TryFrom<Value> for Entry {
-    type Error = ();
+    type Error = Error;
 
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
+    fn try_from(value: Value) -> Result<Self> {
         // validate that value is object
-        let r = match value {
-            Value::Null => panic!(""),
-            Value::Bool(_) => panic!(""),
-            Value::Number(_) => panic!(""),
-            Value::String(_) => panic!(""),
-            Value::Array(_) => panic!(""),
+        match value {
+            Value::Null => Err(Error::from_message("")),
+            Value::Bool(_) => Err(Error::from_message("")),
+            Value::Number(_) => Err(Error::from_message("")),
+            Value::String(_) => Err(Error::from_message("")),
+            Value::Array(_) => Err(Error::from_message("")),
             Value::Object(v) => {
-                let base: String = match &v["_"] {
-                    Value::Null => panic!(""),
-                    Value::Bool(_) => panic!(""),
-                    Value::Number(_) => panic!(""),
-                    Value::String(s) => s.to_owned(),
-                    Value::Array(_) => panic!(""),
-                    Value::Object(_) => panic!(""),
+                let base = match &v["_"] {
+                    Value::Null => return Err(Error::from_message("")),
+                    Value::Bool(_) => return Err(Error::from_message("")),
+                    Value::Number(_) => return Err(Error::from_message("")),
+                    Value::String(s) => s,
+                    Value::Array(_) => return Err(Error::from_message("")),
+                    Value::Object(_) => return Err(Error::from_message("")),
                 };
 
-                let base_value: Option<String> = if v.contains_key(&base) {
-                    match &v[&base] {
-                        Value::Null => panic!(""),
-                        Value::Bool(_) => panic!(""),
-                        Value::Number(_) => panic!(""),
-                        Value::String(s) => Some(s.to_owned()),
-                        Value::Array(_) => panic!(""),
-                        Value::Object(_) => panic!(""),
+                let base_value = if v.contains_key(base) {
+                    match &v[base] {
+                        Value::Null => return Err(Error::from_message("")),
+                        Value::Bool(_) => return Err(Error::from_message("")),
+                        Value::Number(_) => return Err(Error::from_message("")),
+                        Value::String(s) => Some(s),
+                        Value::Array(_) => return Err(Error::from_message("")),
+                        Value::Object(_) => return Err(Error::from_message("")),
                     }
                 } else {
                     None
                 };
 
-                let leader_value: Option<String> = if v.contains_key("__") {
+                let leader_value = if v.contains_key("__") {
                     match &v["__"] {
-                        Value::Null => panic!(""),
-                        Value::Bool(_) => panic!(""),
-                        Value::Number(_) => panic!(""),
-                        Value::String(s) => Some(s.to_owned()),
-                        Value::Array(_) => panic!(""),
-                        Value::Object(_) => panic!(""),
+                        Value::Null => return Err(Error::from_message("")),
+                        Value::Bool(_) => return Err(Error::from_message("")),
+                        Value::Number(_) => return Err(Error::from_message("")),
+                        Value::String(s) => Some(s),
+                        Value::Array(_) => return Err(Error::from_message("")),
+                        Value::Object(_) => return Err(Error::from_message("")),
                     }
                 } else {
                     None
                 };
 
-                let leaves: HashMap<String, Vec<Entry>> = v
+                let leaves = v
                     .iter()
-                    .filter(|(key, _)| (*key != "_") && (**key != base) && (**key != "__"))
+                    .filter(|(key, _)| (*key != "_") && (*key != base) && (*key != "__"))
                     .map(|(key, val)| {
-                        let leaf = key;
-                        let values = match val {
-                            Value::Null => panic!(""),
-                            Value::Bool(_) => panic!(""),
-                            Value::Number(_) => panic!(""),
+                        let values: Vec<Entry> = match val {
+                            Value::Null => return Err(Error::from_message("")),
+                            Value::Bool(_) => return Err(Error::from_message("")),
+                            Value::Number(_) => return Err(Error::from_message("")),
                             Value::String(s) => {
                                 vec![Entry {
-                                    base: leaf.to_owned(),
+                                    base: key.to_owned(),
                                     base_value: Some(s.to_owned()),
                                     leader_value: None,
                                     leaves: HashMap::new(),
@@ -87,66 +87,60 @@ impl TryFrom<Value> for Entry {
                             Value::Array(vs) => vs
                                 .iter()
                                 .map(|v| match v {
-                                    Value::Null => panic!(""),
-                                    Value::Bool(_) => panic!(""),
-                                    Value::Number(_) => panic!(""),
-                                    Value::String(s) => Entry {
-                                        base: leaf.to_owned(),
+                                    Value::Null => return Err(Error::from_message("")),
+                                    Value::Bool(_) => return Err(Error::from_message("")),
+                                    Value::Number(_) => return Err(Error::from_message("")),
+                                    Value::String(s) => Ok(Entry {
+                                        base: key.to_owned(),
                                         base_value: Some(s.to_owned()),
                                         leader_value: None,
                                         leaves: HashMap::new(),
-                                    },
-                                    Value::Array(_) => panic!(""),
+                                    }),
+                                    Value::Array(_) => return Err(Error::from_message("")),
                                     Value::Object(_) => {
-                                        let e: Entry = v.clone().try_into().unwrap();
+                                        let e: Entry = v.clone().try_into()?;
 
-                                        e
+                                        Ok(e)
                                     }
                                 })
-                                .collect(),
+                                .collect::<Result<Vec<Entry>>>()?,
                             Value::Object(_) => {
-                                let e: Entry = val.clone().try_into().unwrap();
+                                let e: Entry = val.clone().try_into()?;
+
                                 vec![e]
                             }
                         };
-                        (leaf.clone(), values)
+
+                        Ok((key.to_owned(), values))
                     })
-                    .collect();
+                    .collect::<Result<HashMap<String, Vec<Entry>>>>()?;
 
-                Entry {
-                    base,
-                    base_value,
-                    leader_value,
+                Ok(Entry {
+                    base: base.to_owned(),
+                    base_value: base_value.cloned(),
+                    leader_value: leader_value.cloned(),
                     leaves,
-                }
+                })
             }
-        };
-
-        Ok(r)
+        }
     }
 }
 
 impl TryFrom<String> for Entry {
-    type Error = ();
+    type Error = Error;
 
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let value_json: Value = match serde_json::from_str(&value) {
-            Ok(v) => v,
-            Err(_) => return Err(()),
-        };
+    fn try_from(value: String) -> Result<Self> {
+        let value_json: Value = serde_json::from_str(&value)?;
 
         value_json.try_into()
     }
 }
 
 impl TryFrom<&str> for Entry {
-    type Error = ();
+    type Error = Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let value_json: Value = match serde_json::from_str(value) {
-            Ok(v) => v,
-            Err(_) => return Err(()),
-        };
+    fn try_from(value: &str) -> Result<Self> {
+        let value_json: Value = serde_json::from_str(value)?;
 
         value_json.try_into()
     }
@@ -170,28 +164,26 @@ impl IntoValue for Entry {
 
         for (leaf, items) in self.leaves.iter() {
             for entry in items {
+                // condense entry to a string if it has no leaves
                 let leaf_value: Value = match entry.leaves.is_empty() {
-                    true => entry.base_value.as_ref().unwrap().to_owned().into(),
+                    true => match &entry.base_value {
+                        None => continue,
+                        Some(s) => s.to_owned().into(),
+                    },
                     false => entry.clone().into_value(),
                 };
 
-                match value.get(leaf) {
-                    None => value[&leaf] = leaf_value,
+                value[&leaf] = match value.get(leaf) {
+                    None => leaf_value,
                     Some(i) => match i {
-                        Value::Null => panic!(""),
-                        Value::Bool(_) => panic!(""),
-                        Value::Number(_) => panic!(""),
-                        Value::String(s) => {
-                            value[&leaf] = vec![s.to_owned().into(), leaf_value].into()
-                        }
-                        Value::Object(o) => {
-                            value[&leaf] = vec![o.clone().into(), leaf_value].into()
-                        }
-                        Value::Array(vs) => {
-                            value[&leaf] = [vs.clone(), vec![leaf_value]].concat().into()
-                        }
+                        Value::Null => panic!("unreachable"),
+                        Value::Bool(_) => panic!("unreachable"),
+                        Value::Number(_) => panic!("unreachable"),
+                        Value::String(s) => vec![s.to_owned().into(), leaf_value].into(),
+                        Value::Object(o) => vec![o.clone().into(), leaf_value].into(),
+                        Value::Array(vs) => [&vs[..], &[leaf_value]].concat().into(),
                     },
-                }
+                };
             }
         }
 

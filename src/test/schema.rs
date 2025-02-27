@@ -1,7 +1,8 @@
 use crate::{
+    error::{Error, Result},
     schema::find_crown,
     types::entry::Entry,
-    types::schema::{Leaves, Schema, Trunks},
+    types::schema::{Branch, Leaves, Schema, Trunks},
 };
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
@@ -16,22 +17,24 @@ struct SchemaTest {
 }
 
 #[test]
-fn entry_into_test() {
+fn entry_into_test() -> Result<()> {
     let file = fs::File::open("./src/test/cases/schema.json").expect("file should open read only");
 
     let tests: Vec<SchemaTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
     for test in tests.iter() {
-        let entry_string = serde_json::to_string(&test.entry).unwrap();
+        let entry_string = serde_json::to_string(&test.entry)?;
 
-        let entry: Entry = serde_json::from_str(&entry_string).unwrap();
+        let entry: Entry = serde_json::from_str(&entry_string)?;
 
-        let result: Schema = entry.try_into().unwrap();
+        let result: Schema = entry.try_into()?;
 
-        let result_string: String = serde_json::to_string(&result).unwrap();
+        let result_string: String = serde_json::to_string(&result)?;
 
         assert_json_eq!(result, test.schema);
     }
+
+    Ok(())
 }
 
 #[test]
@@ -39,18 +42,24 @@ fn find_crown_test() {
     let schema = Schema(HashMap::from([
         (
             "datum".to_owned(),
-            (
-                Trunks(vec![]),
-                Leaves(vec!["date".to_owned(), "name".to_owned()]),
-            ),
+            Branch {
+                trunks: Trunks(vec![]),
+                leaves: Leaves(vec!["date".to_owned(), "name".to_owned()]),
+            },
         ),
         (
             "date".to_owned(),
-            (Trunks(vec!["datum".to_owned()]), Leaves(vec![])),
+            Branch {
+                trunks: Trunks(vec!["datum".to_owned()]),
+                leaves: Leaves(vec![]),
+            },
         ),
         (
             "name".to_owned(),
-            (Trunks(vec!["datum".to_owned()]), Leaves(vec![])),
+            Branch {
+                trunks: Trunks(vec!["datum".to_owned()]),
+                leaves: Leaves(vec![]),
+            },
         ),
     ]));
 

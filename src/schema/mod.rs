@@ -1,6 +1,6 @@
 use crate::types::{
     entry::Entry,
-    schema::{Leaves, Schema, Trunks},
+    schema::{Branch, Leaves, Schema, Trunks},
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -14,8 +14,14 @@ pub fn is_connected(schema: &Schema, base: &str, branch: &str) -> bool {
         return true;
     }
 
-    let (Trunks(trunks), Leaves(leaves)) = match schema.0.get(branch) {
-        None => (Trunks(vec![]), Leaves(vec![])),
+    let Branch {
+        trunks: Trunks(trunks),
+        leaves: Leaves(leaves),
+    } = match schema.0.get(branch) {
+        None => Branch {
+            trunks: Trunks(vec![]),
+            leaves: Leaves(vec![]),
+        },
         Some(vs) => vs.clone(),
     };
 
@@ -45,13 +51,23 @@ pub fn find_crown(schema: &Schema, base: &str) -> Vec<String> {
 }
 
 pub fn count_leaves(schema: Schema, branch: &str) -> usize {
-    let (_, Leaves(leaves)) = schema.0.get(branch).unwrap();
+    let leaves = match schema.0.get(branch) {
+        None => vec![],
+        Some(Branch {
+            leaves: Leaves(ls), ..
+        }) => ls.to_vec(),
+    };
 
     leaves.len()
 }
 
 pub fn get_nesting_level(schema: &Schema, branch: &str) -> i32 {
-    let (Trunks(trunks), _) = schema.0.get(branch).unwrap();
+    let trunks = match schema.0.get(branch) {
+        None => vec![],
+        Some(Branch {
+            trunks: Trunks(ts), ..
+        }) => ts.to_vec(),
+    };
 
     let trunk_levels: Vec<i32> = trunks
         .iter()

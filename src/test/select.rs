@@ -2,6 +2,7 @@ use assert_json_diff::assert_json_eq;
 use serde_json::Value;
 extern crate dir_diff;
 use crate::{
+    error::{Error, Result},
     select::select_record,
     test::read_record,
     types::{entry::Entry, into_value::IntoValue},
@@ -17,7 +18,7 @@ struct SelectTest {
 }
 
 #[tokio::test]
-async fn select_test() {
+async fn select_test() -> Result<()> {
     let file = fs::File::open("./src/test/cases/select.json").expect("file should open read only");
 
     let tests: Vec<SelectTest> = serde_json::from_reader(file).expect("file should be proper JSON");
@@ -28,11 +29,11 @@ async fn select_test() {
         let initial_path = std::path::Path::new(&initial_path);
 
         // parse query to Entry
-        let queries: Vec<Entry> = test.query.iter().map(|query| query.clone().try_into().unwrap()).collect();
+        let queries: Vec<Entry> = test.query.iter().map(|query| query.clone().try_into()).collect::<Result<Vec<Entry>>>()?;
 
         println!("ask: {:#?}", queries.clone().into_iter().map(|query| query.into_value()));
 
-        let entries = select_record(initial_path.to_owned(), queries).await;
+        let entries = select_record(initial_path.to_owned(), queries).await?;
 
         let entries_json: Vec<Value> = entries.iter().map(|i| i.clone().into_value()).collect();
 
@@ -47,4 +48,6 @@ async fn select_test() {
 
         assert_json_eq!(entries_json, expected_json);
     }
+
+    Ok(())
 }

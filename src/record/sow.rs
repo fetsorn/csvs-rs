@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 // TODO remove trait, thing and use grain.base, grain.leaf
 pub fn sow(entry: &Entry, grain: &Grain, trait_: &str, thing: &str) -> Entry {
-    // if trait_ == "datum" && thing == "filepath" {println!("{} {} {} {}", serde_json::to_string_pretty(&entry).unwrap(), serde_json::to_string_pretty(&grain).unwrap(), trait_, thing)};
+    // if trait_ == "datum" && thing == "filepath" {println!("{} {} {} {}", serde_json::to_string_pretty(&entry).expect(""), serde_json::to_string_pretty(&grain).expect(""), trait_, thing)};
 
     // let base = entry;
 
@@ -13,9 +13,14 @@ pub fn sow(entry: &Entry, grain: &Grain, trait_: &str, thing: &str) -> Entry {
         // TODO here match
         return match &grain.leaf_value {
             None => entry.clone(),
-            Some(grain_leaf_value) => match entry.base_value {
-                Some(_) => panic!(),
+            Some(grain_leaf_value) => match &entry.base_value {
                 None => Entry {
+                    base: thing.to_owned(),
+                    base_value: Some(grain_leaf_value.to_owned()),
+                    leader_value: None,
+                    leaves: entry.leaves.clone(),
+                },
+                Some(e) => Entry {
                     base: thing.to_owned(),
                     base_value: Some(grain_leaf_value.to_owned()),
                     leader_value: None,
@@ -30,7 +35,7 @@ pub fn sow(entry: &Entry, grain: &Grain, trait_: &str, thing: &str) -> Entry {
     if entry.base == trait_ {
         let thing_item = Entry {
             base: thing.to_owned(),
-            base_value: Some(grain.leaf_value.as_ref().unwrap().to_owned()),
+            base_value: grain.leaf_value.clone(),
             leader_value: None,
             leaves: HashMap::new(),
         };
@@ -38,7 +43,7 @@ pub fn sow(entry: &Entry, grain: &Grain, trait_: &str, thing: &str) -> Entry {
         let mut leaves = entry.leaves.clone();
 
         let items_new = if entry.leaves.contains_key(thing) {
-            [leaves[thing].clone(), vec![thing_item]].concat()
+            [&leaves[thing][..], &[thing_item]].concat()
         } else {
             vec![thing_item]
         };
@@ -56,7 +61,10 @@ pub fn sow(entry: &Entry, grain: &Grain, trait_: &str, thing: &str) -> Entry {
     let record_has_trait = entry.leaves.keys().any(|v| v == trait_);
 
     if record_has_trait {
-        let trunk_items: &Vec<Entry> = entry.leaves.get(trait_).unwrap();
+        let trunk_items = match entry.leaves.get(trait_) {
+            None => vec![],
+            Some(vs) => vs.to_owned(),
+        };
 
         let trait_items: Vec<Entry> = trunk_items
             .iter()
@@ -125,7 +133,7 @@ pub fn sow(entry: &Entry, grain: &Grain, trait_: &str, thing: &str) -> Entry {
         leaves: leaves_new,
     };
 
-    // if trait_ == "datum" && thing == "filepath" {println!("{}", serde_json::to_string_pretty(&foo).unwrap())};
+    // if trait_ == "datum" && thing == "filepath" {println!("{}", serde_json::to_string_pretty(&foo).expect(""))};
 
     foo
 }

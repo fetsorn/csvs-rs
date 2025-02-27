@@ -1,4 +1,5 @@
 use super::into_value::IntoValue;
+use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -14,74 +15,74 @@ pub struct Grain {
 }
 
 impl TryFrom<Value> for Grain {
-    type Error = ();
+    type Error = Error;
 
-    fn try_from(value: Value) -> Result<Self, Self::Error> {
+    fn try_from(value: Value) -> Result<Self> {
         match value {
-            Value::Null => panic!(""),
-            Value::Bool(_) => panic!(""),
-            Value::Number(_) => panic!(""),
-            Value::String(_) => panic!(""),
-            Value::Array(_) => panic!(""),
+            Value::Null => Err(Error::from_message("")),
+            Value::Bool(_) => Err(Error::from_message("")),
+            Value::Number(_) => Err(Error::from_message("")),
+            Value::String(_) => Err(Error::from_message("")),
+            Value::Array(_) => Err(Error::from_message("")),
             Value::Object(v) => {
-                let base: String = match &v["_"] {
-                    Value::Null => panic!(""),
-                    Value::Bool(_) => panic!(""),
-                    Value::Number(_) => panic!(""),
-                    Value::String(s) => s.to_owned(),
-                    Value::Array(_) => panic!(""),
-                    Value::Object(_) => panic!(""),
+                let base = match &v["_"] {
+                    Value::Null => return Err(Error::from_message("")),
+                    Value::Bool(_) => return Err(Error::from_message("")),
+                    Value::Number(_) => return Err(Error::from_message("")),
+                    Value::String(s) => s,
+                    Value::Array(_) => return Err(Error::from_message("")),
+                    Value::Object(_) => return Err(Error::from_message("")),
                 };
 
-                let base_value: Option<String> = if v.contains_key(&base) {
-                    match &v[&base] {
-                        Value::Null => panic!(""),
-                        Value::Bool(_) => panic!(""),
-                        Value::Number(_) => panic!(""),
-                        Value::String(s) => Some(s.to_owned()),
-                        Value::Array(_) => panic!(""),
-                        Value::Object(_) => panic!(""),
+                let base_value = if v.contains_key(base) {
+                    match &v[base] {
+                        Value::Null => return Err(Error::from_message("")),
+                        Value::Bool(_) => return Err(Error::from_message("")),
+                        Value::Number(_) => return Err(Error::from_message("")),
+                        Value::String(s) => Some(s),
+                        Value::Array(_) => return Err(Error::from_message("")),
+                        Value::Object(_) => return Err(Error::from_message("")),
                     }
                 } else {
                     None
                 };
 
-                let leaves: HashMap<String, Value> = v
+                let leaf: Option<(String, Value)> = v
                     .iter()
-                    .filter(|&(key, _)| (*key != "_") && (**key != base))
-                    .map(|(key, val)| (key.to_owned(), val.clone()))
-                    .collect();
+                    .filter(|(key, _)| (*key != "_") && (*key != base))
+                    .try_fold(None, |with_pair, ((key, val))| {
+                        if with_pair.is_some() {
+                            Err(Error::from_message("more than one key in grain"))
+                        } else {
+                            Ok(Some((key.to_owned(), val.to_owned())))
+                        }
+                    })?;
 
-                if leaves.is_empty() {
-                    return Ok(Grain {
+                match leaf {
+                    None => Ok(Grain {
                         base: base.to_owned(),
-                        base_value: base_value.to_owned(),
+                        base_value: base_value.cloned(),
                         leaf: "".to_owned(),
                         leaf_value: None,
-                    });
+                    }),
+                    Some((key, val)) => {
+                        let leaf_value: Option<String> = match val {
+                            Value::Null => return Err(Error::from_message("")),
+                            Value::Bool(_) => return Err(Error::from_message("")),
+                            Value::Number(_) => return Err(Error::from_message("")),
+                            Value::String(s) => Some(s.to_owned()),
+                            Value::Array(_) => return Err(Error::from_message("")),
+                            Value::Object(_) => return Err(Error::from_message("")),
+                        };
+
+                        Ok(Grain {
+                            base: base.to_owned(),
+                            base_value: base_value.cloned(),
+                            leaf: key,
+                            leaf_value,
+                        })
+                    }
                 }
-
-                if leaves.len() > 1 {
-                    panic!()
-                };
-
-                let leaf = leaves.keys().nth(0).unwrap();
-
-                let leaf_value: Option<String> = match &v[leaf] {
-                    Value::Null => panic!(""),
-                    Value::Bool(_) => panic!(""),
-                    Value::Number(_) => panic!(""),
-                    Value::String(s) => Some(s.to_owned()),
-                    Value::Array(_) => panic!(""),
-                    Value::Object(_) => panic!(""),
-                };
-
-                Ok(Grain {
-                    base: base.to_owned(),
-                    base_value: base_value.clone(),
-                    leaf: leaf.to_owned(),
-                    leaf_value,
-                })
             }
         }
     }

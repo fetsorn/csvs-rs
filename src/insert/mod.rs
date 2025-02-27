@@ -5,7 +5,8 @@ use crate::select::select_schema;
 use crate::types::entry::Entry;
 use crate::types::grain::Grain;
 use crate::types::line::Line;
-use async_stream::stream;
+use crate::error::{Error, Result};
+use async_stream::{try_stream, stream};
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
@@ -24,25 +25,36 @@ struct Tablet {
     pub branch: String,
 }
 
-async fn sort_file(filepath: &Path) {
-    let temp_path = TempDir::new().unwrap();
+async fn sort_file(filepath: &Path) -> Result<()> {
+    let temp_path = TempDir::new()?;
 
-    let output = temp_path.as_ref().join(filepath.file_name().unwrap());
+    let filename = match filepath.file_name() {
+        None => return Err(Error::from_message("unexpected missing filename")),
+        Some(s) => s
+    };
 
-    Sort::new(vec![filepath.to_path_buf()], output.to_path_buf()).sort().unwrap();
+    let output = temp_path.as_ref().join(filename);
 
-    rename(output, filepath).unwrap();
+    Sort::new(vec![filepath.to_path_buf()], output.to_path_buf()).sort();
+
+    rename(output, filepath)?;
+
+    Ok(())
 }
 
-fn plan_insert(schema: &Schema, query: &Entry) -> Vec<Tablet> {
+fn plan_insert(schema: &Schema, query: &Entry) -> Result<Vec<Tablet>> {
     let crown = find_crown(&schema, &query.base);
 
-    let tablets = crown.iter().fold(vec![], |with_branch, branch| {
-        let tablets_new = schema
+    let tablets = crown.iter().try_fold(vec![], |with_branch, branch| {
+        let node = match schema
             .0
-            .get(branch)
-            .unwrap()
-            .0
+            .get(branch) {
+                None => return Err(Error::from_message("unexpected missing branch")),
+                Some(vs) => vs
+            };
+
+        let tablets_new = node
+            .trunks
              .0
             .iter()
             .map(|trunk| Tablet {
@@ -52,35 +64,37 @@ fn plan_insert(schema: &Schema, query: &Entry) -> Vec<Tablet> {
             })
             .collect();
 
-        [with_branch, tablets_new].concat()
+        Ok([with_branch, tablets_new].concat())
     });
 
-    tablets
+    Ok(tablets?)
 }
 
-fn insert_tablet<S: Stream<Item = Entry>>(
+fn insert_tablet<S: Stream<Item = Result<Entry>>>(
     input: S,
     path: PathBuf,
     tablet: Tablet,
-) -> impl Stream<Item = Entry> {
-    let filepath = path.join(&tablet.filename);
+) -> impl Stream<Item = Result<Entry>> {
+    try_stream! {
+        let filepath = path.join(&tablet.filename);
 
-    // create file if it doesn't exist
-    if fs::metadata(&filepath).is_err() {
-        File::create(&filepath).unwrap();
-    }
+        // create file if it doesn't exist
+        if fs::metadata(&filepath).is_err() {
+            File::create(&filepath)?;
+        }
 
-    let file = OpenOptions::new()
-        .append(true)
-        .open(filepath)
-        .expect("cannot open file");
+        let file = OpenOptions::new()
+            .append(true)
+            .open(filepath)
+            .expect("cannot open file");
 
-    let mut wtr = csv::WriterBuilder::new()
-        .has_headers(false)
-        .from_writer(file);
+        let mut wtr = csv::WriterBuilder::new()
+            .has_headers(false)
+            .from_writer(file);
 
-    stream! {
         for await entry in input {
+            let entry = entry?;
+
             // pass the query early on to start other tablet streams
             yield entry.clone();
 
@@ -94,35 +108,39 @@ fn insert_tablet<S: Stream<Item = Entry>>(
             }).collect();
 
             for line in lines.iter() {
-                wtr.serialize(line).unwrap();
+                wtr.serialize(line)?;
             }
         }
     }
 }
 
-async fn insert_record_stream<S: Stream<Item = Entry>>(
+async fn insert_record_stream<S: Stream<Item = Result<Entry>>>(
     input: S,
     path: PathBuf,
-) -> impl Stream<Item = Entry> {
-    let schema = select_schema(&path).await;
+) -> impl Stream<Item = Result<Entry>> {
+    try_stream! {
+        let schema = select_schema(&path).await?;
 
-    let mut strategy = vec![];
+        let mut strategy = vec![];
 
-    stream! {
         for await query in input {
-            strategy = plan_insert(&schema, &query);
+            let query = query?;
 
-            let query_stream = stream! {
+            strategy = plan_insert(&schema, &query)?;
+
+            let query_stream = try_stream! {
                 yield query;
             };
 
-            let mut stream: BoxStream<'static, Entry> = Box::pin(query_stream);
+            let mut stream: BoxStream<'static, Result<Entry>> = Box::pin(query_stream);
 
             for tablet in &strategy {
                 stream = Box::pin(insert_tablet(stream, path.clone(), tablet.clone()));
             }
 
             for await entry in stream {
+                let entry = entry?;
+
                 yield entry;
             }
         }
@@ -135,9 +153,9 @@ async fn insert_record_stream<S: Stream<Item = Entry>>(
                 Err(_) => return,
                 Ok(m) => if m.len() == 0 {
                     // remove file if it is empty
-                    fs::remove_file(filepath).unwrap();
+                    fs::remove_file(filepath)?;
                 } else {
-                    sort_file(&filepath).await;
+                    sort_file(&filepath).await?;
                 }
             }
 
@@ -146,7 +164,7 @@ async fn insert_record_stream<S: Stream<Item = Entry>>(
 }
 
 pub async fn insert_record(path: PathBuf, query: Vec<Entry>) {
-    let readable_stream = stream! {
+    let readable_stream = try_stream! {
         for q in query {
             yield q;
         }

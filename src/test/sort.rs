@@ -1,4 +1,5 @@
 use crate::{
+    error::{Error, Result},
     schema::{get_nesting_level, sort_nesting_ascending, sort_nesting_descending},
     test::read_record,
     types::{entry::Entry, schema::Schema},
@@ -16,7 +17,7 @@ struct LevelTest {
 }
 
 #[test]
-fn level_test() {
+fn level_test() -> Result<()> {
     let file = fs::File::open("./src/test/cases/get_nesting_level.json")
         .expect("file should open read only");
 
@@ -25,12 +26,14 @@ fn level_test() {
     for test in tests.iter() {
         let schema_record = read_record(&test.schema);
 
-        let schema = schema_record.try_into().unwrap();
+        let schema = schema_record.try_into()?;
 
         let level = get_nesting_level(&schema, &test.initial);
 
         assert_eq!(level, test.expected);
     }
+
+    Ok(())
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -41,7 +44,7 @@ struct SortTest {
 }
 
 #[test]
-fn sort_descending_test() {
+fn sort_descending_test() -> Result<()> {
     let file = fs::File::open("./src/test/cases/sort_descending.json")
         .expect("file should open read only");
 
@@ -50,7 +53,7 @@ fn sort_descending_test() {
     for test in tests.iter() {
         let schema_record = read_record(&test.schema);
 
-        let schema = schema_record.try_into().unwrap();
+        let schema = schema_record.try_into()?;
 
         let mut sorted = test.initial.clone();
 
@@ -58,10 +61,12 @@ fn sort_descending_test() {
 
         assert_eq!(sorted, test.expected);
     }
+
+    Ok(())
 }
 
 #[test]
-fn sort_ascending_test() {
+fn sort_ascending_test() -> Result<()> {
     let file =
         fs::File::open("./src/test/cases/sort_ascending.json").expect("file should open read only");
 
@@ -70,7 +75,7 @@ fn sort_ascending_test() {
     for test in tests.iter() {
         let schema_record = read_record(&test.schema);
 
-        let schema = schema_record.try_into().unwrap();
+        let schema = schema_record.try_into()?;
 
         let mut sorted = test.initial.clone();
 
@@ -78,4 +83,6 @@ fn sort_ascending_test() {
 
         assert_eq!(sorted, test.expected);
     }
+
+    Ok(())
 }

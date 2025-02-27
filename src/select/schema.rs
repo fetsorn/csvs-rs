@@ -1,9 +1,10 @@
 use super::line::select_line_stream;
 use super::types::state::State;
 use super::types::tablet::Tablet;
+use crate::error::{Error, Result};
 use crate::types::entry::Entry;
 use crate::types::line::Line;
-use async_stream::stream;
+use async_stream::{stream, try_stream};
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
@@ -12,14 +13,16 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 
-pub fn select_schema_line_stream<S: Stream<Item = Line>>(
+pub fn select_schema_line_stream<S: Stream<Item = Result<Line>>>(
     input: S,
     entry: Entry,
-) -> impl Stream<Item = State> {
-    stream! {
+) -> impl Stream<Item = Result<State>> {
+    try_stream! {
         let mut schema_entry = entry.clone();
 
         for await line in input {
+            let line = line?;
+
             let trunk = line.key;
 
             let leaf = line.value;

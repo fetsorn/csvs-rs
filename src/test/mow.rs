@@ -1,4 +1,5 @@
 use crate::{
+    error::{Error, Result},
     record::mow::mow,
     test::read_record,
     types::{entry::Entry, grain::Grain, into_value::IntoValue},
@@ -17,13 +18,13 @@ struct MowTest {
 }
 
 #[test]
-fn mow_test() {
+fn mow_test() -> Result<()> {
     let file = fs::File::open("./src/test/cases/mow.json").expect("file should open read only");
 
     let tests: Vec<MowTest> = serde_json::from_reader(file).expect("file should be proper JSON");
 
     for test in tests.iter() {
-        let entry: Entry = read_record(&test.initial).try_into().unwrap();
+        let entry: Entry = read_record(&test.initial).try_into()?;
 
         let result: Vec<Grain> = mow(&entry, &test.trait_, &test.thing);
 
@@ -37,4 +38,6 @@ fn mow_test() {
 
         assert_json_eq!(result_json, expected_json);
     }
+
+    Ok(())
 }

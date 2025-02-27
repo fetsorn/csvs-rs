@@ -2,9 +2,10 @@ use super::line::select_line_stream;
 use super::schema::select_schema_line_stream;
 use super::types::state::State;
 use super::types::tablet::Tablet;
+use crate::error::{Error, Result};
 use crate::types::entry::Entry;
 use crate::types::line::Line;
-use async_stream::stream;
+use async_stream::{stream, try_stream};
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
@@ -13,13 +14,13 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::PathBuf;
 
-fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
-    stream! {
+fn line_stream(filepath: PathBuf) -> impl Stream<Item = Result<Line>> {
+    try_stream! {
         if std::fs::metadata(&filepath).is_err() {
             return;
         }
 
-        let file = File::open(filepath).unwrap();
+        let file = File::open(filepath)?;
 
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
@@ -27,7 +28,7 @@ fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
             .from_reader(file);
 
         for result in rdr.records() {
-            let record = result.unwrap();
+            let record = result?;
 
             let line = Line {
                 key: match record.get(0) { None => String::from(""), Some(s) => s.to_owned() },
@@ -39,32 +40,41 @@ fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
     }
 }
 
-pub fn select_tablet<S: Stream<Item = State>>(
+pub fn select_tablet<S: Stream<Item = Result<State>>>(
     input: S,
     path: PathBuf,
     tablet: Tablet,
-) -> impl Stream<Item = State> {
-    // println!("{}", serde_json::to_string_pretty(&tablet).unwrap());
+) -> impl Stream<Item = Result<State>> {
+    // println!("{}", serde_json::to_string_pretty(&tablet).expect(""));
     // println!("{}", tablet.filename);
 
-    stream! {
+    try_stream! {
         for await state in input {
+            let state = state?;
+
             let filepath = path.join(&tablet.filename);
 
             let is_schema = tablet.filename == "_-_.csv";
 
             if is_schema {
+                // wrap in result here for try_stream! proc to pick up error from ?
+                let query = match state.query {
+                    None => Err(Error::from_message("unexpected missing query")),
+                    Some(q) => Ok(q)
+                }?;
+
                 // do select_schema_line_stream
-                let s = select_schema_line_stream(line_stream(filepath), state.query.unwrap());
+                let s = select_schema_line_stream(line_stream(filepath), query);
 
                 pin_mut!(s); // needed for iteration
 
                 // yield output
                 while let Some(state) = s.next().await {
+                    let state = state?;
+
                     yield state;
                 }
             } else {
-
                 // value tablets receive a matchMap from accumulating tablets
                 // but don't need to do anything with it or with the accompanying entry
                 let drop_match_map = tablet.passthrough && state.match_map.is_some();
@@ -105,6 +115,8 @@ pub fn select_tablet<S: Stream<Item = State>>(
 
                 // yield output
                 while let Some(state) = s.next().await {
+                    let state = state?;
+
                     yield state;
                 }
             }

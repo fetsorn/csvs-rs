@@ -19,9 +19,9 @@
       }
     },
     "schema": {
-      "datum": [[], ["date", "name"]],
-      "date": [["datum"], []],
-      "name": [["datum"], []]
+        "datum": { "trunks": [], "leaves": ["date", "name"]},
+        "date": { "trunks": ["datum"], "leaves": []},
+        "name": { "trunks": ["datum"], "leaves": []}
     }
   }
 ]

@@ -1,5 +1,5 @@
-use crate::types::into_value::IntoValue;
 use crate::types::entry::Entry;
+use crate::types::into_value::IntoValue;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -20,18 +20,21 @@ pub struct State {
 
 impl fmt::Display for State {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string_pretty(&self.clone().into_value()).unwrap())
+        let state_value = self.clone().into_value();
+
+        let state_string = serde_json::to_string_pretty(&state_value).expect("unreachable");
+
+        write!(f, "{}", state_string)
     }
 }
 
 impl IntoValue for State {
     fn into_value(self) -> Value {
-        let mut value: Value = json!({
-        });
+        let mut value: Value = json!({});
 
         value["fst"] = match self.fst {
             None => Value::Null,
-            Some(s) => s.into()
+            Some(s) => s.into(),
         };
 
         value["isMatch"] = self.is_match.into();
@@ -40,22 +43,28 @@ impl IntoValue for State {
 
         value["matchMap"] = match self.match_map {
             None => Value::Null,
-            Some(m) => serde_json::from_str(&serde_json::to_string_pretty(&m).unwrap()).unwrap()
+            Some(m) => {
+                let map_string = serde_json::to_string(&m).expect("unreachable");
+
+                let map_value = serde_json::from_str(&map_string).expect("unreachable");
+
+                map_value
+            }
         };
 
         value["thingQuerying"] = match self.thing_querying {
             None => Value::Null,
-            Some(s) => s.into()
+            Some(s) => s.into(),
         };
 
         value["entry"] = match self.entry {
             None => Value::Null,
-            Some(e) => e.into_value()
+            Some(e) => e.into_value(),
         };
 
         value["query"] = match self.query {
             None => Value::Null,
-            Some(q) => q.into_value()
+            Some(q) => q.into_value(),
         };
 
         value

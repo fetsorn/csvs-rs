@@ -1,10 +1,11 @@
 use crate::record::mow::mow;
 use crate::schema::find_crown;
 use crate::select::select_schema;
-use crate::types::schema::Schema;
+use crate::types::schema::{Schema, Trunks, Leaves, Branch};
 use crate::types::entry::Entry;
 use crate::types::line::Line;
-use async_stream::stream;
+use crate::error::{Error, Result};
+use async_stream::{try_stream, stream};
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
@@ -43,7 +44,10 @@ fn plan_update(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     let crown = find_crown(&schema, &query.base);
 
     let tablets = crown.iter().fold(vec![], |with_branch, branch| {
-        let trunks = &schema.0.get(branch).unwrap().0 .0;
+        let trunks = match &schema.0.get(branch) {
+            None => vec![],
+            Some(Branch {trunks: Trunks(ts), ..}) => ts.to_vec()
+        };
 
         let tablets_new = trunks
             .iter()
@@ -60,39 +64,42 @@ fn plan_update(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     tablets
 }
 
-fn update_schema_line_stream(entry: Entry) -> impl Stream<Item = Line> {
-    stream! {
+fn update_schema_line_stream(entry: Entry) -> impl Stream<Item = Result<Line>> {
+    try_stream! {
         let mut keys: Vec<String> = entry.leaves.keys().cloned().collect();
 
         keys.sort();
 
         for trunk in keys {
-            let mut leaves: Vec<Entry> = entry.leaves.get(&trunk).cloned().unwrap();
+            let mut leaves: Vec<Entry> = match entry.leaves.get(&trunk) {
+                None => vec![],
+                Some(es) => es.clone()
+            };
 
             leaves.sort_by(|a, b| a.base.cmp(&b.base).then(
-                a.base_value.as_ref().unwrap().cmp(&b.base_value.as_ref().unwrap())
+                a.base_value.cmp(&b.base_value)
             ));
 
             for leaf in leaves {
                 yield Line {
                     key: trunk.to_owned(),
-                    value: leaf.base_value.unwrap()
+                    value: match leaf.base_value { None => "".to_owned(), Some(s) => s }
                 }
             }
         }
     }
 }
 
-fn update_line_stream<S: Stream<Item = Line>>(
+fn update_line_stream<S: Stream<Item = Result<Line>>>(
     input: S,
     entry: Entry,
     tablet: Tablet,
-) -> impl Stream<Item = Line> {
+) -> impl Stream<Item = Result<Line>> {
     let grains = mow(&entry, &tablet.trunk, &tablet.branch);
 
     let mut keys: Vec<String> = grains
         .iter()
-        .map(|grain| grain.base_value.as_ref().unwrap().to_owned())
+        .map(|grain| match &grain.base_value { None => "".to_owned(), Some(s) => s.to_owned() })
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
         .collect::<Vec<String>>();
@@ -101,20 +108,20 @@ fn update_line_stream<S: Stream<Item = Line>>(
 
     let values: HashMap<String, Vec<String>> =
         grains.iter().fold(HashMap::new(), |with_grain, grain| {
-            let key = grain.base_value.as_ref().unwrap();
+            let key = match &grain.base_value { None => "", Some(s) => s };
 
             if grain.leaf_value.is_none() {
                 return with_grain;
             }
 
-            let value = grain.leaf_value.as_ref().unwrap();
+            let value = match &grain.leaf_value { None => "", Some(s) => s };
 
             let values_old: Vec<String> = match with_grain.get(key) {
                 None => vec![],
                 Some(vs) => vs.to_vec()
             };
 
-            let mut values_new = [values_old, vec![value.to_owned()]].concat();
+            let mut values_new = [&values_old[..], &[value.to_owned()]].concat();
 
             values_new.sort();
 
@@ -130,32 +137,38 @@ fn update_line_stream<S: Stream<Item = Line>>(
         is_match: false,
     };
 
-    stream! {
+    try_stream! {
         for await line in input {
+            let line = line?;
 
-            let fst_is_new = state_intermediary.fst.is_none() || state_intermediary.fst.as_ref().unwrap() != &line.key;
+            let fst_is_new = state_intermediary.fst.is_none() || state_intermediary.fst.as_ref() != Some(&line.key);
 
             if state_intermediary.is_match && fst_is_new {
-                match values.get(state_intermediary.fst.as_ref().unwrap()) {
+                match &state_intermediary.fst {
                     None => (),
-                    Some(vs) => {
-                        for value in vs {
-                            yield Line {
-                                key: state_intermediary.fst.as_ref().unwrap().to_owned(),
-                                value: value.to_owned()
-                            };
+                    Some(f) => match values.get(f) {
+                        None => (),
+                        Some(vs) => {
+                            for value in vs {
+                                yield Line {
+                                    key: f.to_owned(),
+                                    value: value.to_owned()
+                                };
+                            }
                         }
                     }
                 }
 
-                keys = keys.iter().filter(|k| *k != state_intermediary.fst.as_ref().unwrap()).cloned().collect();
+                keys = keys.iter().filter(
+                    |k| Some(k) != state_intermediary.fst.as_ref().as_ref()
+                ).cloned().collect();
             }
 
             if fst_is_new {
                 let keys_between: Vec<String> = keys.iter().filter(|key| {
                     let is_first: bool = state_intermediary.fst.is_none();
 
-                    let is_after: bool = is_first || state_intermediary.fst.as_ref().unwrap() <= *key;
+                    let is_after: bool = is_first || state_intermediary.fst.as_ref() <= Some(key);
 
                     let is_before: bool = **key < line.key;
 
@@ -211,17 +224,17 @@ fn update_line_stream<S: Stream<Item = Line>>(
     }
 }
 
-fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
-    stream! {
-        if fs::metadata(&filepath).is_err() { File::create(&filepath).unwrap(); }
+fn line_stream(filepath: PathBuf) -> impl Stream<Item = Result<Line>> {
+    try_stream! {
+        if fs::metadata(&filepath).is_err() { File::create(&filepath)?; }
 
         let mut rdr = csv::ReaderBuilder::new()
             .has_headers(false)
             .flexible(true)
-            .from_reader(File::open(&filepath).unwrap());
+            .from_reader(File::open(&filepath)?);
 
         for result in rdr.records() {
-            let record = result.unwrap();
+            let record = result?;
 
             let line = Line {
                 key: match record.get(0) { None => String::from(""), Some(s) => s.to_owned() },
@@ -233,23 +246,29 @@ fn line_stream(filepath: PathBuf) -> impl Stream<Item = Line> {
     }
 }
 
-fn update_tablet<S: Stream<Item = Entry>>(
+fn update_tablet<S: Stream<Item = Result<Entry>>>(
     input: S,
     path: PathBuf,
     tablet: Tablet,
-) -> impl Stream<Item = Entry> {
+) -> impl Stream<Item = Result<Entry>> {
     let filepath = path.join(&tablet.filename);
 
     let is_schema = tablet.filename == "_-_.csv";
 
-    stream! {
+    try_stream! {
         // must assign a variable to create the directory
         // must assign inside the stream scope to keep the directory
-        let temp_d = TempDir::new().unwrap();
+        let temp_d = TempDir::new()?;
 
-        let temp_path = temp_d.as_ref().join(filepath.file_name().unwrap());
+        // wrap in result here for try_stream! proc to pick up error from ?
+        let filename = match filepath.file_name() {
+            None => Err(Error::from_message("unexpected missing filename")),
+            Some(s) => Ok(s)
+        }?;
 
-        File::create(&temp_path).unwrap();
+        let temp_path = temp_d.as_ref().join(filename);
+
+        File::create(&temp_path)?;
 
         let temp_file = OpenOptions::new()
             .append(true)
@@ -261,6 +280,8 @@ fn update_tablet<S: Stream<Item = Entry>>(
             .from_writer(temp_file);
 
         for await entry in input {
+            let entry = entry?;
+
             // pass the query early on to start other tablet streams
             yield entry.clone();
 
@@ -271,8 +292,11 @@ fn update_tablet<S: Stream<Item = Entry>>(
                 pin_mut!(update_stream);
 
                 for await line_new in update_stream {
-                    wtr.serialize(line_new).unwrap();
-                    wtr.flush().unwrap();
+                    let line_new = line_new?;
+
+                    wtr.serialize(line_new)?;
+
+                    wtr.flush()?;
                 }
             } else {
                 let update_stream = update_line_stream(line_stream(filepath.clone()), entry.clone(), tablet.clone());
@@ -280,8 +304,11 @@ fn update_tablet<S: Stream<Item = Entry>>(
                 pin_mut!(update_stream);
 
                 for await line_new in update_stream {
-                    wtr.serialize(line_new).unwrap();
-                    wtr.flush().unwrap();
+                    let line_new = line_new?;
+
+                    wtr.serialize(line_new)?;
+
+                    wtr.flush()?;
                 }
             }
         }
@@ -290,45 +317,49 @@ fn update_tablet<S: Stream<Item = Entry>>(
             Err(_) => (),
             Ok(m) => if m.len() == 0 {
                 if fs::metadata(&filepath).is_ok() {
-                    fs::remove_file(&filepath).unwrap();
+                    fs::remove_file(&filepath)?;
                 }
             } else {
                 // fs::rename fails with invalid cross-device link
-                fs::copy(temp_path, &filepath).unwrap();
+                fs::copy(temp_path, &filepath)?;
             }
         }
 
         match fs::metadata(&filepath) {
             Err(_) => return,
             Ok(m) => if m.len() == 0 {
-                fs::remove_file(filepath).unwrap();
+                fs::remove_file(filepath)?;
             }
         }
 
     }
 }
 
-async fn update_record_stream<S: Stream<Item = Entry>>(
+async fn update_record_stream<S: Stream<Item = Result<Entry>>>(
     input: S,
     path: PathBuf,
-) -> impl Stream<Item = Entry> {
-    let schema = select_schema(&path).await;
+) -> impl Stream<Item = Result<Entry>> {
+    try_stream! {
+    let schema = select_schema(&path).await?;
 
-    stream! {
         for await query in input {
+            let query = query?;
+
             let strategy = plan_update(&schema, &query);
 
-            let query_stream = stream! {
+            let query_stream = try_stream! {
                 yield query;
             };
 
-            let mut stream: BoxStream<'static, Entry> = Box::pin(query_stream);
+            let mut stream: BoxStream<'static, Result<Entry>> = Box::pin(query_stream);
 
             for tablet in strategy {
                 stream = Box::pin(update_tablet(stream, path.clone(), tablet));
             }
 
             for await entry in stream {
+                let entry = entry?;
+
                 yield entry;
             }
         }
@@ -336,7 +367,7 @@ async fn update_record_stream<S: Stream<Item = Entry>>(
 }
 
 pub async fn update_record(path: PathBuf, query: Vec<Entry>) {
-    let readable_stream = stream! {
+    let readable_stream = try_stream! {
         for q in query {
             yield q;
         }

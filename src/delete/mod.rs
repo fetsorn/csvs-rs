@@ -1,8 +1,9 @@
 use crate::select::select_schema;
-use crate::types::schema::{Schema, Leaves, Trunks};
+use crate::types::schema::{Branch, Schema, Leaves, Trunks};
 use crate::types::entry::Entry;
 use crate::types::line::Line;
-use async_stream::stream;
+use crate::error::{Error, Result};
+use async_stream::{try_stream, stream};
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
@@ -20,14 +21,19 @@ struct Tablet {
     pub trait_is_first: bool,
 }
 
-fn plan_delete(schema: &Schema, query: &Entry) -> Vec<Tablet> {
-    let (Trunks(trunks), Leaves(leaves)) = schema.0.get(&query.base).unwrap();
+fn plan_delete(schema: &Schema, query: &Entry) -> Result<Vec<Tablet>> {
+    let (trunks, leaves) = match schema.0.get(&query.base) { None => (vec![], vec![]), Some(Branch { trunks: Trunks(ts), leaves: Leaves(ls)}) => (ts.to_vec(), ls.to_vec()) };
+
+    let base_value = match &query.base_value {
+        None => return Err(Error::from_message("unexpected missing option")),
+        Some(v) => v
+    };
 
     let trunk_tablets: Vec<Tablet> = trunks
         .iter()
         .map(|trunk| Tablet {
             filename: format!("{}-{}.csv", trunk, query.base),
-            trait_: query.base_value.as_ref().unwrap().to_owned(),
+            trait_: base_value.to_owned(),
             trait_is_first: false,
         })
         .collect();
@@ -36,37 +42,42 @@ fn plan_delete(schema: &Schema, query: &Entry) -> Vec<Tablet> {
         .iter()
         .map(|leaf| Tablet {
             filename: format!("{}-{}.csv", query.base, leaf),
-            trait_: query.base_value.as_ref().unwrap().to_owned(),
+            trait_: base_value.to_owned(),
             trait_is_first: true,
         })
         .collect();
 
-    [trunk_tablets, leaf_tablets].concat()
+    Ok([trunk_tablets, leaf_tablets].concat())
 }
 
-async fn delete_tablet(path: &Path, tablet: Tablet) {
+async fn delete_tablet(path: &Path, tablet: Tablet) -> Result<()> {
     let filepath = path.join(&tablet.filename);
 
     match fs::metadata(&filepath) {
-        Err(_) => return,
+        Err(_) => return Ok(()),
         Ok(m) => {
             if m.len() == 0 {
-                return;
+                return Ok(());
             }
         }
     }
 
-    let file = File::open(&filepath).unwrap();
+    let file = File::open(&filepath)?;
 
     let mut rdr = csv::ReaderBuilder::new()
         .has_headers(false)
         .from_reader(file);
 
-    let temp_path = TempDir::new().unwrap();
+    let temp_path = TempDir::new()?;
 
-    let output = temp_path.as_ref().join(filepath.file_name().unwrap());
+    let filename = match filepath.file_name() {
+        None => return Err(Error::from_message("unexpected missing filename")),
+        Some(s) => s
+    };
 
-    let temp_file = File::create(&output).unwrap();
+    let output = temp_path.as_ref().join(filename);
+
+    let temp_file = File::create(&output)?;
 
     let mut wtr = csv::WriterBuilder::new()
         .has_headers(false)
@@ -74,7 +85,7 @@ async fn delete_tablet(path: &Path, tablet: Tablet) {
         .from_writer(temp_file);
 
     for result in rdr.records() {
-        let record = result.unwrap();
+        let record = result?;
 
         let line = Line {
             key: match record.get(0) { None => String::from(""), Some(s) => s.to_owned() },
@@ -90,37 +101,41 @@ async fn delete_tablet(path: &Path, tablet: Tablet) {
         let is_match = trait_ == tablet.trait_;
 
         if !is_match {
-            wtr.serialize(line).unwrap();
+            wtr.serialize(line)?;
         }
     }
 
-    wtr.flush().unwrap();
+    wtr.flush()?;
 
     // if empty
     match fs::metadata(&output) {
-        Err(_) => fs::remove_file(filepath).unwrap(),
+        Err(_) => fs::remove_file(filepath)?,
         Ok(m) => {
             if m.len() == 0 {
-                fs::remove_file(filepath).unwrap();
+                fs::remove_file(filepath)?;
             } else {
-                fs::copy(output, filepath).unwrap();
+                fs::copy(output, filepath)?;
             }
         }
     }
+
+    Ok(())
 }
 
-async fn delete_record_stream<S: Stream<Item = Entry>>(
+async fn delete_record_stream<S: Stream<Item = Result<Entry>>>(
     input: S,
     path: PathBuf,
-) -> impl Stream<Item = Entry> {
-    let schema = select_schema(&path).await;
+) -> impl Stream<Item = Result<Entry>> {
+    try_stream! {
+        let schema = select_schema(&path).await?;
 
-    stream! {
         for await query in input {
-            let strategy = plan_delete(&schema, &query);
+            let query = query?;
+
+            let strategy = plan_delete(&schema, &query)?;
 
             for tablet in strategy {
-                delete_tablet(&path, tablet).await;
+                delete_tablet(&path, tablet).await?;
             }
 
             yield query;
@@ -129,7 +144,7 @@ async fn delete_record_stream<S: Stream<Item = Entry>>(
 }
 
 pub async fn delete_record(path: PathBuf, query: Vec<Entry>) {
-    let readable_stream = stream! {
+    let readable_stream = try_stream! {
         for q in query {
             yield q;
         }

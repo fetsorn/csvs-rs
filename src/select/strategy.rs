@@ -2,7 +2,7 @@ use super::types::tablet::Tablet;
 use crate::schema::{find_crown, sort_nesting_ascending, sort_nesting_descending};
 use crate::types::{
     entry::Entry,
-    schema::{Leaves, Schema, Trunks},
+    schema::{Branch, Leaves, Schema, Trunks},
 };
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -24,27 +24,28 @@ pub fn plan_select_schema(query: &Entry) -> Vec<Tablet> {
 }
 
 fn gather_keys(query: &Entry) -> Vec<String> {
-    let leaves = query
-        .leaves
-        .keys()
-        .filter(|key| query.base_value.is_none() || **key != query.base_value.clone().unwrap());
+    let leaves = query.leaves.keys().filter(|key| match &query.base_value {
+        None => true,
+        Some(s) => key != &s,
+    });
 
     leaves.fold(vec![], |with_leaf, leaf| {
-        let leaf_values = query.leaves.get(leaf).unwrap();
+        let leaf_keys = match &query.leaves.get(leaf) {
+            None => vec![],
+            Some(vs) => vs.iter().fold(vec![], |with_key, item| {
+                let has_leaves = item.leaves.keys().len() > 0;
 
-        let leaf_keys = leaf_values.iter().fold(vec![], |with_key, item| {
-            let has_leaves = item.leaves.keys().len() > 0;
+                let keys_item_new = if has_leaves {
+                    gather_keys(item)
+                } else {
+                    vec![]
+                };
 
-            let keys_item_new = if has_leaves {
-                gather_keys(item)
-            } else {
-                vec![]
-            };
+                [with_key, keys_item_new].concat()
+            }),
+        };
 
-            [with_key, keys_item_new].concat()
-        });
-
-        [with_leaf, vec![leaf.to_owned()], leaf_keys].concat()
+        [&with_leaf[..], &[leaf.to_owned()], &leaf_keys[..]].concat()
     })
 }
 
@@ -56,7 +57,9 @@ pub fn plan_query(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     let queried_tablets = queried_branches.iter().fold(vec![], |with_branch, branch| {
         let trunks = match schema.0.get(branch) {
             None => vec![],
-            Some((Trunks(ts), _)) => ts.to_vec(),
+            Some(Branch {
+                trunks: Trunks(ts), ..
+            }) => ts.to_vec(),
         };
 
         let tablets_new: Vec<Tablet> = trunks
@@ -87,7 +90,10 @@ pub fn plan_options(schema: &Schema, base: &str) -> Vec<Tablet> {
 
     let (trunks, leaves) = match schema.0.get(base) {
         None => (vec![], vec![]),
-        Some((Trunks(ts), Leaves(ls))) => (ts.to_vec(), ls.to_vec()),
+        Some(Branch {
+            trunks: Trunks(ts),
+            leaves: Leaves(ls),
+        }) => (ts.to_vec(), ls.to_vec()),
     };
 
     let trunk_tablets: Vec<Tablet> = trunks
@@ -138,7 +144,12 @@ pub fn plan_values(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     // println!("{:#?}", crown);
 
     let value_tablets = crown.iter().fold(vec![], |with_branch, branch| {
-        let (Trunks(trunks), _) = schema.0.get(branch).unwrap();
+        let trunks = match schema.0.get(branch) {
+            None => vec![],
+            Some(Branch {
+                trunks: Trunks(ts), ..
+            }) => ts.to_vec(),
+        };
 
         let tablets_new = trunks
             .iter()

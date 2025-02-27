@@ -69,9 +69,9 @@ pub fn mow(entry: &Entry, trait_: &str, thing: &str) -> Vec<Grain> {
                         .iter()
                         .map(|branch_item| Grain {
                             base: trait_.to_owned(),
-                            base_value: Some(trunk_item.base_value.as_ref().unwrap().to_owned()),
+                            base_value: trunk_item.base_value.clone(),
                             leaf: thing.to_owned(),
-                            leaf_value: Some(branch_item.base_value.as_ref().unwrap().to_owned()),
+                            leaf_value: branch_item.base_value.clone(),
                         })
                         .collect();
 
@@ -81,12 +81,12 @@ pub fn mow(entry: &Entry, trait_: &str, thing: &str) -> Vec<Grain> {
                     //      if branch item does not have base value
                     let grain = Grain {
                         base: trait_.to_owned(),
-                        base_value: Some(trunk_item.base_value.as_ref().unwrap().to_owned()),
+                        base_value: trunk_item.base_value.clone(),
                         leaf: thing.to_owned(),
                         leaf_value: None,
                     };
 
-                    [with_trunk_item, vec![grain]].concat()
+                    [&with_trunk_item[..], &[grain]].concat()
                 }
             });
 
