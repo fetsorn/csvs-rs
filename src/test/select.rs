@@ -29,9 +29,16 @@ async fn select_test() -> Result<()> {
         let initial_path = std::path::Path::new(&initial_path);
 
         // parse query to Entry
-        let queries: Vec<Entry> = test.query.iter().map(|query| query.clone().try_into()).collect::<Result<Vec<Entry>>>()?;
+        let queries: Vec<Entry> = test
+            .query
+            .iter()
+            .map(|query| query.clone().try_into())
+            .collect::<Result<Vec<Entry>>>()?;
 
-        println!("ask: {:#?}", queries.clone().into_iter().map(|query| query.into_value()));
+        println!(
+            "ask: {:#?}",
+            queries.clone().into_iter().map(|query| query.into_value())
+        );
 
         let entries = select_record(initial_path.to_owned(), queries).await?;
 

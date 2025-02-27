@@ -1,9 +1,9 @@
+use crate::error::{Error, Result};
 use crate::select::select_schema;
-use crate::types::schema::{Branch, Schema, Leaves, Trunks};
 use crate::types::entry::Entry;
 use crate::types::line::Line;
-use crate::error::{Error, Result};
-use async_stream::{try_stream, stream};
+use crate::types::schema::{Branch, Leaves, Schema, Trunks};
+use async_stream::{stream, try_stream};
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use temp_dir::TempDir;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -22,11 +22,17 @@ struct Tablet {
 }
 
 fn plan_delete(schema: &Schema, query: &Entry) -> Result<Vec<Tablet>> {
-    let (trunks, leaves) = match schema.0.get(&query.base) { None => (vec![], vec![]), Some(Branch { trunks: Trunks(ts), leaves: Leaves(ls)}) => (ts.to_vec(), ls.to_vec()) };
+    let (trunks, leaves) = match schema.0.get(&query.base) {
+        None => (vec![], vec![]),
+        Some(Branch {
+            trunks: Trunks(ts),
+            leaves: Leaves(ls),
+        }) => (ts.to_vec(), ls.to_vec()),
+    };
 
     let base_value = match &query.base_value {
         None => return Err(Error::from_message("unexpected missing option")),
-        Some(v) => v
+        Some(v) => v,
     };
 
     let trunk_tablets: Vec<Tablet> = trunks
@@ -72,7 +78,7 @@ async fn delete_tablet(path: &Path, tablet: Tablet) -> Result<()> {
 
     let filename = match filepath.file_name() {
         None => return Err(Error::from_message("unexpected missing filename")),
-        Some(s) => s
+        Some(s) => s,
     };
 
     let output = temp_path.as_ref().join(filename);
@@ -88,8 +94,14 @@ async fn delete_tablet(path: &Path, tablet: Tablet) -> Result<()> {
         let record = result?;
 
         let line = Line {
-            key: match record.get(0) { None => String::from(""), Some(s) => s.to_owned() },
-            value: match record.get(1) { None => String::from(""), Some(s) => s.to_owned() }
+            key: match record.get(0) {
+                None => String::from(""),
+                Some(s) => s.to_owned(),
+            },
+            value: match record.get(1) {
+                None => String::from(""),
+                Some(s) => s.to_owned(),
+            },
         };
 
         let trait_ = if tablet.trait_is_first {
@@ -154,6 +166,5 @@ pub async fn delete_record(path: PathBuf, query: Vec<Entry>) {
 
     pin_mut!(s); // needed for iteration
 
-    while let Some(entry) = s.next().await {
-    }
+    while let Some(entry) = s.next().await {}
 }

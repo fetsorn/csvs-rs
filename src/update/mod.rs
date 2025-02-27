@@ -1,11 +1,11 @@
+use crate::error::{Error, Result};
 use crate::record::mow::mow;
 use crate::schema::find_crown;
 use crate::select::select_schema;
-use crate::types::schema::{Schema, Trunks, Leaves, Branch};
 use crate::types::entry::Entry;
 use crate::types::line::Line;
-use crate::error::{Error, Result};
-use async_stream::{try_stream, stream};
+use crate::types::schema::{Branch, Leaves, Schema, Trunks};
+use async_stream::{stream, try_stream};
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
@@ -46,7 +46,9 @@ fn plan_update(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     let tablets = crown.iter().fold(vec![], |with_branch, branch| {
         let trunks = match &schema.0.get(branch) {
             None => vec![],
-            Some(Branch {trunks: Trunks(ts), ..}) => ts.to_vec()
+            Some(Branch {
+                trunks: Trunks(ts), ..
+            }) => ts.to_vec(),
         };
 
         let tablets_new = trunks
@@ -99,7 +101,10 @@ fn update_line_stream<S: Stream<Item = Result<Line>>>(
 
     let mut keys: Vec<String> = grains
         .iter()
-        .map(|grain| match &grain.base_value { None => "".to_owned(), Some(s) => s.to_owned() })
+        .map(|grain| match &grain.base_value {
+            None => "".to_owned(),
+            Some(s) => s.to_owned(),
+        })
         .collect::<std::collections::HashSet<_>>()
         .into_iter()
         .collect::<Vec<String>>();
@@ -108,17 +113,23 @@ fn update_line_stream<S: Stream<Item = Result<Line>>>(
 
     let values: HashMap<String, Vec<String>> =
         grains.iter().fold(HashMap::new(), |with_grain, grain| {
-            let key = match &grain.base_value { None => "", Some(s) => s };
+            let key = match &grain.base_value {
+                None => "",
+                Some(s) => s,
+            };
 
             if grain.leaf_value.is_none() {
                 return with_grain;
             }
 
-            let value = match &grain.leaf_value { None => "", Some(s) => s };
+            let value = match &grain.leaf_value {
+                None => "",
+                Some(s) => s,
+            };
 
             let values_old: Vec<String> = match with_grain.get(key) {
                 None => vec![],
-                Some(vs) => vs.to_vec()
+                Some(vs) => vs.to_vec(),
             };
 
             let mut values_new = [&values_old[..], &[value.to_owned()]].concat();
@@ -377,6 +388,5 @@ pub async fn update_record(path: PathBuf, query: Vec<Entry>) {
 
     pin_mut!(s); // needed for iteration
 
-    while let Some(entry) = s.next().await {
-    }
+    while let Some(entry) = s.next().await {}
 }

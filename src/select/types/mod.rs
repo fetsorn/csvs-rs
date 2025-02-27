@@ -1,2 +1,2 @@
-pub mod tablet;
 pub mod state;
+pub mod tablet;

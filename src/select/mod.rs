@@ -1,17 +1,17 @@
-use crate::types::{entry::Entry, schema::Schema};
 use crate::error::{Error, Result};
+use crate::types::{entry::Entry, schema::Schema};
 mod line;
-mod types;
-mod strategy;
 mod schema;
+mod strategy;
+mod types;
 use strategy::{plan_select, plan_select_schema};
 mod tablet;
-use async_stream::{try_stream, stream};
+use async_stream::{stream, try_stream};
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use std::collections::HashMap;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 use tablet::select_tablet;
 use types::state::State;
 

@@ -1,22 +1,22 @@
 #![allow(warnings)]
 use crate::error::{Error, Result};
 use clap::{Parser, Subcommand};
+mod create;
 mod delete;
+mod error;
 mod insert;
 mod record;
 mod schema;
 mod select;
 mod test;
-mod error;
 mod types;
 mod update;
-mod create;
+use create::create_dataset;
+use delete::delete_record;
 use insert::insert_record;
 use select::print_record;
-use update::update_record;
-use delete::delete_record;
-use create::create_dataset;
 use std::env;
+use update::update_record;
 
 /// A command-line utility for comma separated value store datasets
 #[derive(Parser)]
@@ -82,34 +82,34 @@ async fn main() -> Result<()> {
             let query_record: types::entry::Entry = query_json.try_into()?;
 
             print_record(path, vec![query_record]).await?
-        },
+        }
         Some(Commands::Delete { query }) => {
             let query_json: serde_json::Value = serde_json::from_str(query)?;
 
             let query_record: types::entry::Entry = query_json.try_into()?;
 
             delete_record(path, vec![query_record]).await;
-        },
+        }
         Some(Commands::Update { query }) => {
             let query_json: serde_json::Value = serde_json::from_str(query)?;
 
             let query_record: types::entry::Entry = query_json.try_into()?;
 
             update_record(path, vec![query_record]).await;
-        },
+        }
         Some(Commands::Insert { query }) => {
             let query_json: serde_json::Value = serde_json::from_str(query)?;
 
             let query_record: types::entry::Entry = query_json.try_into()?;
 
             insert_record(path, vec![query_record]).await;
-        },
+        }
         Some(Commands::Create { name }) => {
             create_dataset(path, name);
-        },
+        }
         None => {
             // show help
-        },
+        }
     }
 
     Ok(())

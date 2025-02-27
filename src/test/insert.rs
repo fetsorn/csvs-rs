@@ -30,7 +30,10 @@ async fn insert_test() -> Result<()> {
 
             if file_type.is_dir() {
             } else {
-                fs::copy(file_entry.path(), temp_path.as_ref().join(file_entry.file_name()))?;
+                fs::copy(
+                    file_entry.path(),
+                    temp_path.as_ref().join(file_entry.file_name()),
+                )?;
             }
         }
 
@@ -39,7 +42,11 @@ async fn insert_test() -> Result<()> {
         let expected_path = std::path::Path::new(&expected_str);
 
         // parse query to Entry
-        let queries: Vec<Entry> = test.query.iter().map(|query| read_record(&query).try_into()).collect::<Result<Vec<Entry>>>()?;
+        let queries: Vec<Entry> = test
+            .query
+            .iter()
+            .map(|query| read_record(&query).try_into())
+            .collect::<Result<Vec<Entry>>>()?;
 
         insert_record(temp_path.path().to_owned(), queries).await;
 
@@ -53,8 +60,7 @@ async fn insert_test() -> Result<()> {
                 } else {
                     let received = fs::read_to_string(file_entry.path())?;
 
-                    let expected =
-                        fs::read_to_string(expected_path.join(file_entry.file_name()))?;
+                    let expected = fs::read_to_string(expected_path.join(file_entry.file_name()))?;
 
                     assert_eq!(received, expected);
                 }
