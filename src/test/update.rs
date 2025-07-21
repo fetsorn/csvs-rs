@@ -2,8 +2,8 @@ extern crate dir_diff;
 use crate::{
     error::{Error, Result},
     test::read_record,
-    types::{entry::Entry, grain::Grain},
     update::update_record,
+    Entry, Grain,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;

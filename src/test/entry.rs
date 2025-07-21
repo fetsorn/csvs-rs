@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::types::{entry::Entry, into_value::IntoValue};
+use crate::{Entry, IntoValue};
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

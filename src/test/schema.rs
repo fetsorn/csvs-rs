@@ -1,8 +1,7 @@
 use crate::{
     error::{Error, Result},
     schema::find_crown,
-    types::entry::Entry,
-    types::schema::{Branch, Leaves, Schema, Trunks},
+    Branch, Entry, Leaves, Schema, Trunks,
 };
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};

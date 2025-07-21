@@ -1,10 +1,4 @@
-use crate::error::{Error, Result};
-use crate::record::mow::mow;
-use crate::schema::find_crown;
-use crate::select::select_schema;
-use crate::types::entry::Entry;
-use crate::types::line::Line;
-use crate::types::schema::{Branch, Leaves, Schema, Trunks};
+use crate::{Branch, Entry, Error, Leaves, Line, Result, Schema, Trunks};
 use async_stream::{stream, try_stream};
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
@@ -41,7 +35,7 @@ fn plan_update(schema: &Schema, query: &Entry) -> Vec<Tablet> {
         }];
     }
 
-    let crown = find_crown(&schema, &query.base);
+    let crown = schema.find_crown(&query.base);
 
     let tablets = crown.iter().fold(vec![], |with_branch, branch| {
         let trunks = match &schema.0.get(branch) {
@@ -97,7 +91,7 @@ fn update_line_stream<S: Stream<Item = Result<Line>>>(
     entry: Entry,
     tablet: Tablet,
 ) -> impl Stream<Item = Result<Line>> {
-    let grains = mow(&entry, &tablet.trunk, &tablet.branch);
+    let grains = entry.mow(&tablet.trunk, &tablet.branch);
 
     let mut keys: Vec<String> = grains
         .iter()
@@ -346,12 +340,12 @@ fn update_tablet<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-async fn update_record_stream<S: Stream<Item = Result<Entry>>>(
+pub async fn update_record_stream<S: Stream<Item = Result<Entry>>>(
     input: S,
     path: PathBuf,
 ) -> impl Stream<Item = Result<Entry>> {
     try_stream! {
-    let schema = select_schema(&path).await?;
+        let schema = select_schema(&path).await?;
 
         for await query in input {
             let query = query?;
@@ -377,7 +371,7 @@ async fn update_record_stream<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-pub async fn update_record(path: PathBuf, query: Vec<Entry>) {
+pub async fn update_record(path: PathBuf, query: Vec<Entry>) -> Result<()> {
     let readable_stream = try_stream! {
         for q in query {
             yield q;
@@ -389,4 +383,6 @@ pub async fn update_record(path: PathBuf, query: Vec<Entry>) {
     pin_mut!(s); // needed for iteration
 
     while let Some(entry) = s.next().await {}
+
+    Ok(())
 }

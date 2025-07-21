@@ -1,6 +1,6 @@
 extern crate dir_diff;
 use crate::error::{Error, Result};
-use crate::{insert_record, test::read_record, types::entry::Entry};
+use crate::{insert_record, test::read_record, Entry};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use temp_dir::TempDir;

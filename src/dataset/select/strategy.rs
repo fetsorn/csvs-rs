@@ -1,9 +1,6 @@
 use super::types::tablet::Tablet;
 use crate::schema::{find_crown, sort_nesting_ascending, sort_nesting_descending};
-use crate::types::{
-    entry::Entry,
-    schema::{Branch, Leaves, Schema, Trunks},
-};
+use crate::{Branch, Entry, Leaves, Schema, Trunks};
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 

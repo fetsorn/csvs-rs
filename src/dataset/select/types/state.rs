@@ -1,5 +1,5 @@
-use crate::types::entry::Entry;
-use crate::types::into_value::IntoValue;
+use crate::Entry;
+use crate::IntoValue;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;

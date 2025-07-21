@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use crate::types::{entry::Entry, schema::Schema};
+use crate::{Entry, Schema};
 mod line;
 mod schema;
 mod strategy;

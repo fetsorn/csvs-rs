@@ -1,11 +1,7 @@
 use super::types::state::State;
 use super::types::tablet::Tablet;
 use crate::error::{Error, Result};
-use crate::record::mow::mow;
-use crate::record::sow::sow;
-use crate::types::entry::Entry;
-use crate::types::grain::Grain;
-use crate::types::line::Line;
+use crate::{Entry, Grain, Line};
 use async_stream::{stream, try_stream};
 use futures_core::stream::Stream;
 use futures_util::stream::StreamExt;
@@ -43,7 +39,7 @@ fn make_state_initial(state: &State, tablet: &Tablet) -> State {
                         leaf_value: e.base_value.clone(),
                     };
 
-                    sow(&empty_entry, &grain, &tablet.base, &e.base)
+                    empty_entry.sow(&grain, &tablet.base, &e.base)
                 }
             } else {
                 e.clone()
@@ -187,7 +183,7 @@ fn make_state_line(
         if is_match && match_is_new {
             state.entry = match &state.entry {
                 None => panic!("unreachable"),
-                Some(e) => Some(sow(e, &grain_new, &tablet.trait_, &tablet.thing)),
+                Some(e) => Some(e.sow(&grain_new, &tablet.trait_, &tablet.thing)),
             };
 
             if tablet.querying {
@@ -202,7 +198,7 @@ fn make_state_line(
                 if is_new_thing {
                     state.query = match &state.query {
                         None => panic!("unreachable"),
-                        Some(q) => Some(sow(q, &grain_new, &tablet.trait_, &tablet.thing)),
+                        Some(q) => Some(q.sow(&grain_new, &tablet.trait_, &tablet.thing)),
                     };
                 }
             }

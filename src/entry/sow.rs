@@ -1,5 +1,5 @@
-use crate::types::entry::Entry;
-use crate::types::grain::Grain;
+use super::Entry;
+use crate::Grain;
 use std::collections::HashMap;
 
 // TODO remove trait, thing and use grain.base, grain.leaf

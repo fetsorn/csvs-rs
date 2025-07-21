@@ -5,7 +5,7 @@ use crate::{
     error::{Error, Result},
     select::select_record,
     test::read_record,
-    types::{entry::Entry, into_value::IntoValue},
+    Entry, IntoValue,
 };
 use serde::{Deserialize, Serialize};
 use std::fs;

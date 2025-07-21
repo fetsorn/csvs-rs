@@ -2,7 +2,7 @@ use crate::{
     error::{Error, Result},
     schema::{get_nesting_level, sort_nesting_ascending, sort_nesting_descending},
     test::read_record,
-    types::{entry::Entry, schema::Schema},
+    Entry, Schema,
 };
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};

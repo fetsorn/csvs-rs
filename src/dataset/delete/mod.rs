@@ -1,8 +1,4 @@
-use crate::error::{Error, Result};
-use crate::select::select_schema;
-use crate::types::entry::Entry;
-use crate::types::line::Line;
-use crate::types::schema::{Branch, Leaves, Schema, Trunks};
+use crate::{Branch, Leaves, Schema, Trunks, Line, Entry, Error, Result, Dataset};
 use async_stream::{stream, try_stream};
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
@@ -134,12 +130,12 @@ async fn delete_tablet(path: &Path, tablet: Tablet) -> Result<()> {
     Ok(())
 }
 
-async fn delete_record_stream<S: Stream<Item = Result<Entry>>>(
+pub async fn delete_record_stream<S: Stream<Item = Result<Entry>>>(
+    dataset: &Dataset,
     input: S,
-    path: PathBuf,
 ) -> impl Stream<Item = Result<Entry>> {
     try_stream! {
-        let schema = select_schema(&path).await?;
+        let schema = dataset.select_schema().await?;
 
         for await query in input {
             let query = query?;
@@ -155,16 +151,18 @@ async fn delete_record_stream<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-pub async fn delete_record(path: PathBuf, query: Vec<Entry>) {
+pub async fn delete_record(dataset: Dataset, query: Vec<Entry>) -> Result<()> {
     let readable_stream = try_stream! {
         for q in query {
             yield q;
         }
     };
 
-    let s = delete_record_stream(readable_stream, path).await;
+    let s = dataset.delete_record_stream(readable_stream).await;
 
     pin_mut!(s); // needed for iteration
 
     while let Some(entry) = s.next().await {}
+
+    Ok(())
 }

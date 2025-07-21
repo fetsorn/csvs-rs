@@ -2,7 +2,7 @@ use crate::{
     error::{Error, Result},
     record::mow::mow,
     test::read_record,
-    types::{entry::Entry, grain::Grain, into_value::IntoValue},
+    Entry, Grain, IntoValue,
 };
 use assert_json_diff::assert_json_eq;
 use serde::{Deserialize, Serialize};

@@ -1,25 +1,11 @@
+use super::{Branch, Leaves, Schema, Trunks};
 use crate::error::{Error, Result};
-use crate::types::entry::Entry;
+use crate::Entry;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Leaves(pub Vec<String>);
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Trunks(pub Vec<String>);
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Branch {
-    pub trunks: Trunks,
-    pub leaves: Leaves,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Schema(pub HashMap<String, Branch>);
 
 impl TryFrom<Entry> for Schema {
     type Error = Error;

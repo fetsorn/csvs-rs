@@ -1,18 +1,6 @@
-use super::into_value::IntoValue;
-use crate::error::{Error, Result};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use std::collections::HashMap;
-use std::convert::Into;
+use super::{Grain, Result};
+use serde_json::Value;
 use std::convert::TryFrom;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Grain {
-    pub base: String,
-    pub base_value: Option<String>,
-    pub leaf: String,
-    pub leaf_value: Option<String>,
-}
 
 impl TryFrom<Value> for Grain {
     type Error = Error;
@@ -84,22 +72,6 @@ impl TryFrom<Value> for Grain {
                     }
                 }
             }
-        }
-    }
-}
-
-impl IntoValue for Grain {
-    fn into_value(self) -> Value {
-        match self.leaf_value {
-            Some(leaf_value) => json!({
-                "_": self.base,
-                self.base: self.base_value,
-                self.leaf: leaf_value
-            }),
-            None => json!({
-                "_": self.base,
-                self.base: self.base_value
-            }),
         }
     }
 }

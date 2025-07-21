@@ -1,11 +1,5 @@
 use crate::error::{Error, Result};
-use crate::record::mow::mow;
-use crate::schema::find_crown;
-use crate::select::select_schema;
-use crate::types::entry::Entry;
-use crate::types::grain::Grain;
-use crate::types::line::Line;
-use crate::types::schema::Schema;
+use crate::{Entry, Grain, Line, Schema};
 use async_stream::{stream, try_stream};
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
@@ -43,7 +37,7 @@ async fn sort_file(filepath: &Path) -> Result<()> {
 }
 
 fn plan_insert(schema: &Schema, query: &Entry) -> Result<Vec<Tablet>> {
-    let crown = find_crown(&schema, &query.base);
+    let crown = schema.find_crown(&query.base);
 
     let tablets = crown.iter().try_fold(vec![], |with_branch, branch| {
         let node = match schema.0.get(branch) {
@@ -161,7 +155,7 @@ async fn insert_record_stream<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-pub async fn insert_record(path: PathBuf, query: Vec<Entry>) {
+pub async fn insert_record(path: PathBuf, query: Vec<Entry>) -> Result<()> {
     let readable_stream = try_stream! {
         for q in query {
             yield q;
@@ -173,4 +167,6 @@ pub async fn insert_record(path: PathBuf, query: Vec<Entry>) {
     pin_mut!(s); // needed for iteration
 
     while let Some(entry) = s.next().await {}
+
+    Ok(())
 }
