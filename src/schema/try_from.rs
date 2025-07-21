@@ -1,6 +1,5 @@
 use super::{Branch, Leaves, Schema, Trunks};
-use crate::error::{Error, Result};
-use crate::Entry;
+use crate::{Entry, Error, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::cmp::Ordering;

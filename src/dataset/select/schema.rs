@@ -1,8 +1,7 @@
 use super::line::select_line_stream;
 use super::types::state::State;
 use super::types::tablet::Tablet;
-use crate::error::{Error, Result};
-use crate::{Entry, Line};
+use crate::{line::Line, Entry, Error, Result};
 use async_stream::{stream, try_stream};
 use futures_core::stream::Stream;
 use futures_util::pin_mut;

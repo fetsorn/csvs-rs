@@ -2,9 +2,7 @@ use super::line::select_line_stream;
 use super::schema::select_schema_line_stream;
 use super::types::state::State;
 use super::types::tablet::Tablet;
-use crate::error::{Error, Result};
-use crate::Entry;
-use crate::Line;
+use crate::{line::Line, Entry, Error, Result};
 use async_stream::{stream, try_stream};
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
@@ -41,9 +39,9 @@ fn line_stream(filepath: PathBuf) -> impl Stream<Item = Result<Line>> {
 }
 
 pub fn select_tablet<S: Stream<Item = Result<State>>>(
-    input: S,
     path: PathBuf,
     tablet: Tablet,
+    input: S,
 ) -> impl Stream<Item = Result<State>> {
     // println!("{}", serde_json::to_string_pretty(&tablet).expect(""));
     // println!("{}", tablet.filename);

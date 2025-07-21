@@ -1,5 +1,5 @@
-use super::into_value::IntoValue;
 use super::Grain;
+use crate::IntoValue;
 use serde_json::{json, Value};
 
 impl IntoValue for Grain {

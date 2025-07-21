@@ -12,5 +12,4 @@ pub use entry::Entry;
 pub use error::{Error, Result};
 pub use grain::Grain;
 pub use into_value::IntoValue;
-pub use line::Line;
 pub use schema::{Branch, Leaves, Schema, Trunks};

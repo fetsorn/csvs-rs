@@ -1,4 +1,4 @@
-use crate::{Branch, Entry, Error, Leaves, Line, Result, Schema, Trunks};
+use crate::{Branch, Entry, Error, Leaves, line::Line, Result, Schema, Trunks, Dataset};
 use async_stream::{stream, try_stream};
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
@@ -252,9 +252,9 @@ fn line_stream(filepath: PathBuf) -> impl Stream<Item = Result<Line>> {
 }
 
 fn update_tablet<S: Stream<Item = Result<Entry>>>(
-    input: S,
     path: PathBuf,
     tablet: Tablet,
+    input: S,
 ) -> impl Stream<Item = Result<Entry>> {
     let filepath = path.join(&tablet.filename);
 
@@ -340,12 +340,12 @@ fn update_tablet<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-pub async fn update_record_stream<S: Stream<Item = Result<Entry>>>(
+pub fn update_record_stream<S: Stream<Item = Result<Entry>>>(
+    dataset: Dataset,
     input: S,
-    path: PathBuf,
 ) -> impl Stream<Item = Result<Entry>> {
     try_stream! {
-        let schema = select_schema(&path).await?;
+        let schema = dataset.clone().select_schema().await?;
 
         for await query in input {
             let query = query?;
@@ -359,7 +359,7 @@ pub async fn update_record_stream<S: Stream<Item = Result<Entry>>>(
             let mut stream: BoxStream<'static, Result<Entry>> = Box::pin(query_stream);
 
             for tablet in strategy {
-                stream = Box::pin(update_tablet(stream, path.clone(), tablet));
+                stream = Box::pin(update_tablet(dataset.dir.clone(), tablet, stream));
             }
 
             for await entry in stream {
@@ -371,14 +371,14 @@ pub async fn update_record_stream<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-pub async fn update_record(path: PathBuf, query: Vec<Entry>) -> Result<()> {
+pub async fn update_record(dataset: Dataset, query: Vec<Entry>) -> Result<()> {
     let readable_stream = try_stream! {
         for q in query {
             yield q;
         }
     };
 
-    let s = update_record_stream(readable_stream, path).await;
+    let s = dataset.update_record_stream(readable_stream);
 
     pin_mut!(s); // needed for iteration
 

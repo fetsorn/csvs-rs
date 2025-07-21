@@ -1,4 +1,4 @@
-use crate::{Branch, Leaves, Schema, Trunks, Line, Entry, Error, Result, Dataset};
+use crate::{Branch, Leaves, Schema, Trunks, line::Line, Entry, Error, Result, Dataset};
 use async_stream::{stream, try_stream};
 use futures_core::stream::Stream;
 use futures_util::pin_mut;
@@ -52,7 +52,7 @@ fn plan_delete(schema: &Schema, query: &Entry) -> Result<Vec<Tablet>> {
     Ok([trunk_tablets, leaf_tablets].concat())
 }
 
-async fn delete_tablet(path: &Path, tablet: Tablet) -> Result<()> {
+pub async fn delete_tablet(path: PathBuf, tablet: Tablet) -> Result<()> {
     let filepath = path.join(&tablet.filename);
 
     match fs::metadata(&filepath) {
@@ -130,12 +130,12 @@ async fn delete_tablet(path: &Path, tablet: Tablet) -> Result<()> {
     Ok(())
 }
 
-pub async fn delete_record_stream<S: Stream<Item = Result<Entry>>>(
-    dataset: &Dataset,
+pub fn delete_record_stream<S: Stream<Item = Result<Entry>>>(
+    dataset: Dataset,
     input: S,
 ) -> impl Stream<Item = Result<Entry>> {
     try_stream! {
-        let schema = dataset.select_schema().await?;
+        let schema = dataset.clone().select_schema().await?;
 
         for await query in input {
             let query = query?;
@@ -143,7 +143,7 @@ pub async fn delete_record_stream<S: Stream<Item = Result<Entry>>>(
             let strategy = plan_delete(&schema, &query)?;
 
             for tablet in strategy {
-                delete_tablet(&path, tablet).await?;
+                delete_tablet(dataset.dir.clone(), tablet).await?;
             }
 
             yield query;
@@ -158,7 +158,7 @@ pub async fn delete_record(dataset: Dataset, query: Vec<Entry>) -> Result<()> {
         }
     };
 
-    let s = dataset.delete_record_stream(readable_stream).await;
+    let s = dataset.delete_record_stream(readable_stream);
 
     pin_mut!(s); // needed for iteration
 

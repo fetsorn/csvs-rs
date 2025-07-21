@@ -1,5 +1,4 @@
-use crate::error::{Error, Result};
-use crate::{Entry, Schema};
+use crate::{Error, Result, Dataset, Entry, Schema};
 mod line;
 mod schema;
 mod strategy;
@@ -12,12 +11,14 @@ use futures_util::pin_mut;
 use futures_util::stream::StreamExt;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use serde::{Deserialize, Serialize};
 use tablet::select_tablet;
 use types::state::State;
+use serde_json::Value;
 
 pub fn select_schema_stream<S: Stream<Item = Result<Entry>>>(
+    dataset: Dataset,
     input: S,
-    path: PathBuf,
 ) -> impl Stream<Item = Result<Entry>> {
     try_stream! {
         for await query in input {
@@ -44,7 +45,7 @@ pub fn select_schema_stream<S: Stream<Item = Result<Entry>>>(
                 let mut stream: BoxStream<'static, Result<State>> = Box::pin(query_stream);
 
                 for tablet in strategy {
-                    stream = Box::pin(select_tablet(stream, path.clone(), tablet));
+                    stream = Box::pin(select_tablet(dataset.dir.clone(), tablet, stream));
                 }
 
                 for await state in stream {
@@ -60,7 +61,7 @@ pub fn select_schema_stream<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-pub async fn select_schema(path: &Path) -> Result<Schema> {
+pub async fn select_schema(dataset: Dataset) -> Result<Schema> {
     let readable_stream = try_stream! {
         yield Entry {
             base: "_".to_owned(),
@@ -70,7 +71,7 @@ pub async fn select_schema(path: &Path) -> Result<Schema> {
         };
     };
 
-    let s = select_schema_stream(readable_stream, path.to_path_buf());
+    let s = dataset.select_schema_stream(readable_stream);
 
     pin_mut!(s); // needed for iteration
 
@@ -86,8 +87,8 @@ pub async fn select_schema(path: &Path) -> Result<Schema> {
 }
 
 pub fn select_record_stream<S: Stream<Item = Result<Entry>>>(
+    dataset: Dataset,
     input: S,
-    path: PathBuf,
 ) -> impl Stream<Item = Result<Entry>> {
     try_stream! {
         for await query in input {
@@ -114,7 +115,7 @@ pub fn select_record_stream<S: Stream<Item = Result<Entry>>>(
                 let mut stream: BoxStream<'static, Result<State>> = Box::pin(query_stream);
 
                 for tablet in strategy {
-                    stream = Box::pin(select_tablet(stream, path.clone(), tablet));
+                    stream = Box::pin(select_tablet(dataset.dir.clone(), tablet, stream));
                 }
 
                 for await state in stream {
@@ -126,7 +127,7 @@ pub fn select_record_stream<S: Stream<Item = Result<Entry>>>(
                     }
                 }
             } else {
-                let schema = select_schema(&path).await?;
+                let schema = dataset.clone().select_schema().await?;
 
                 let strategy = plan_select(&schema, &query);
 
@@ -148,7 +149,7 @@ pub fn select_record_stream<S: Stream<Item = Result<Entry>>>(
                 let mut stream: BoxStream<'static, Result<State>> = Box::pin(query_stream);
 
                 for tablet in strategy {
-                    stream = Box::pin(select_tablet(stream, path.clone(), tablet));
+                    stream = Box::pin(select_tablet(dataset.dir.clone(), tablet, stream));
                 }
 
                 for await state in stream {
@@ -213,7 +214,7 @@ pub fn select_record_stream<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-pub async fn select_record(path: PathBuf, query: Vec<Entry>) -> Result<Vec<Entry>> {
+pub async fn select_record(dataset: Dataset, query: Vec<Entry>) -> Result<Vec<Entry>> {
     let mut entries = vec![];
 
     let readable_stream = try_stream! {
@@ -222,7 +223,7 @@ pub async fn select_record(path: PathBuf, query: Vec<Entry>) -> Result<Vec<Entry
         }
     };
 
-    let s = select_record_stream(readable_stream, path);
+    let s = dataset.select_record_stream(readable_stream);
 
     pin_mut!(s); // needed for iteration
 
@@ -235,14 +236,14 @@ pub async fn select_record(path: PathBuf, query: Vec<Entry>) -> Result<Vec<Entry
     Ok(entries)
 }
 
-pub async fn print_record(path: PathBuf, query: Vec<Entry>) -> Result<()> {
+pub async fn print_record(dataset: Dataset, query: Vec<Entry>) -> Result<()> {
     let readable_stream = try_stream! {
         for q in query {
             yield q;
         }
     };
 
-    let s = select_record_stream(readable_stream, path);
+    let s = dataset.select_record_stream(readable_stream);
 
     pin_mut!(s); // needed for iteration
 

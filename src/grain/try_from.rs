@@ -1,4 +1,5 @@
-use super::{Grain, Result};
+use super::Grain;
+use crate::{Error, Result};
 use serde_json::Value;
 use std::convert::TryFrom;
 

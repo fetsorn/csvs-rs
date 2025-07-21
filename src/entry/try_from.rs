@@ -1,3 +1,8 @@
+use super::Entry;
+use crate::{Error, Result};
+use serde_json::Value;
+use std::collections::HashMap;
+
 impl TryFrom<Value> for Entry {
     type Error = Error;
 

@@ -1,5 +1,4 @@
 use super::types::tablet::Tablet;
-use crate::schema::{find_crown, sort_nesting_ascending, sort_nesting_descending};
 use crate::{Branch, Entry, Leaves, Schema, Trunks};
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -49,7 +48,7 @@ fn gather_keys(query: &Entry) -> Vec<String> {
 pub fn plan_query(schema: &Schema, query: &Entry) -> Vec<Tablet> {
     let mut queried_branches = gather_keys(query);
 
-    queried_branches.sort_by(sort_nesting_ascending(schema.clone()));
+    queried_branches.sort_by(schema.clone().sort_nesting_ascending());
 
     let queried_tablets = queried_branches.iter().fold(vec![], |with_branch, branch| {
         let trunks = match schema.0.get(branch) {
@@ -131,12 +130,13 @@ pub fn plan_options(schema: &Schema, base: &str) -> Vec<Tablet> {
 }
 
 pub fn plan_values(schema: &Schema, query: &Entry) -> Vec<Tablet> {
-    let mut crown: Vec<String> = find_crown(&schema, &query.base)
+    let mut crown: Vec<String> = schema
+        .find_crown(&query.base)
         .into_iter()
         .filter(|b| *b != query.base)
         .collect();
 
-    crown.sort_by(sort_nesting_descending(schema.clone()));
+    crown.sort_by(schema.clone().sort_nesting_descending());
 
     // println!("{:#?}", crown);
 

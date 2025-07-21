@@ -1,7 +1,6 @@
 use super::types::state::State;
 use super::types::tablet::Tablet;
-use crate::error::{Error, Result};
-use crate::{Entry, Grain, Line};
+use crate::{line::Line, Entry, Error, Grain, Result};
 use async_stream::{stream, try_stream};
 use futures_core::stream::Stream;
 use futures_util::stream::StreamExt;
@@ -228,7 +227,7 @@ pub fn select_line_stream<S: Stream<Item = Result<Line>>>(
 
     let grains = match &state_current.query {
         None => panic!("unreachable"), // because query is created in state_initial
-        Some(q) => mow(q, &tablet.trait_, &tablet.thing),
+        Some(q) => q.mow(&tablet.trait_, &tablet.thing),
     };
 
     // if tablet.filename == "datum-filepath.csv" {println!("{} {}", tablet.filename, serde_json::to_string_pretty(&grains)?)};

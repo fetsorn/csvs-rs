@@ -1,5 +1,4 @@
-use crate::error::{Error, Result};
-use crate::{Entry, Grain, Line, Schema};
+use crate::{Entry, Grain, line::Line, Schema, Error, Result, Dataset};
 use async_stream::{stream, try_stream};
 use futures_core::stream::{BoxStream, Stream};
 use futures_util::pin_mut;
@@ -63,9 +62,9 @@ fn plan_insert(schema: &Schema, query: &Entry) -> Result<Vec<Tablet>> {
 }
 
 fn insert_tablet<S: Stream<Item = Result<Entry>>>(
-    input: S,
     path: PathBuf,
     tablet: Tablet,
+    input: S,
 ) -> impl Stream<Item = Result<Entry>> {
     try_stream! {
         let filepath = path.join(&tablet.filename);
@@ -90,7 +89,7 @@ fn insert_tablet<S: Stream<Item = Result<Entry>>>(
             // pass the query early on to start other tablet streams
             yield entry.clone();
 
-            let grains = mow(&entry, &tablet.trunk, &tablet.branch);
+            let grains = entry.mow(&tablet.trunk, &tablet.branch);
 
             let lines: Vec<Line> = grains.iter().filter(|grain| grain.leaf_value.is_some()).map(|grain| {
                 Line {
@@ -106,12 +105,12 @@ fn insert_tablet<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-async fn insert_record_stream<S: Stream<Item = Result<Entry>>>(
+pub fn insert_record_stream<S: Stream<Item = Result<Entry>>>(
+    dataset: Dataset,
     input: S,
-    path: PathBuf,
 ) -> impl Stream<Item = Result<Entry>> {
     try_stream! {
-        let schema = select_schema(&path).await?;
+        let schema = dataset.clone().select_schema().await?;
 
         let mut strategy = vec![];
 
@@ -127,7 +126,7 @@ async fn insert_record_stream<S: Stream<Item = Result<Entry>>>(
             let mut stream: BoxStream<'static, Result<Entry>> = Box::pin(query_stream);
 
             for tablet in &strategy {
-                stream = Box::pin(insert_tablet(stream, path.clone(), tablet.clone()));
+                stream = Box::pin(insert_tablet(dataset.dir.clone(), tablet.clone(), stream));
             }
 
             for await entry in stream {
@@ -138,8 +137,7 @@ async fn insert_record_stream<S: Stream<Item = Result<Entry>>>(
         }
 
         for tablet in strategy {
-            let filepath = path.join(&tablet.filename);
-
+            let filepath = dataset.dir.join(&tablet.filename);
 
             match fs::metadata(&filepath) {
                 Err(_) => return,
@@ -155,14 +153,14 @@ async fn insert_record_stream<S: Stream<Item = Result<Entry>>>(
     }
 }
 
-pub async fn insert_record(path: PathBuf, query: Vec<Entry>) -> Result<()> {
+pub async fn insert_record(dataset: Dataset, query: Vec<Entry>) -> Result<()> {
     let readable_stream = try_stream! {
         for q in query {
             yield q;
         }
     };
 
-    let s = insert_record_stream(readable_stream, path).await;
+    let s = dataset.insert_record_stream(readable_stream);
 
     pin_mut!(s); // needed for iteration
 

@@ -1,3 +1,6 @@
+use crate::{Entry, IntoValue};
+use serde_json::{json, Value};
+
 impl IntoValue for Entry {
     fn into_value(self) -> Value {
         let mut value: Value = json!({
