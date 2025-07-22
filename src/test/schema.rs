@@ -1,9 +1,5 @@
-use crate::{
-    error::{Error, Result},
-    schema::find_crown,
-    Branch, Entry, Leaves, Schema, Trunks,
-};
 use assert_json_diff::assert_json_eq;
+use csvs::{Branch, Entry, Leaves, Result, Schema, Trunks};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
@@ -62,7 +58,7 @@ fn find_crown_test() {
         ),
     ]));
 
-    let mut crown = find_crown(&schema, "datum");
+    let mut crown = schema.find_crown("datum");
 
     crown.sort();
 

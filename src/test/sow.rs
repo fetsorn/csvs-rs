@@ -1,10 +1,6 @@
-use crate::{
-    error::{Error, Result},
-    record::sow::sow,
-    test::read_record,
-    Entry, Grain, IntoValue,
-};
+use super::read_record;
 use assert_json_diff::assert_json_eq;
+use csvs::{Entry, Grain, IntoValue, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
@@ -29,7 +25,7 @@ fn sow_test() -> Result<()> {
 
         let grain: Grain = read_record(&test.grain).try_into()?;
 
-        let result: Entry = sow(&entry, &grain, &test.trait_, &test.thing);
+        let result: Entry = entry.sow(&grain, &test.trait_, &test.thing);
 
         let result_json: Value = result.into_value();
 

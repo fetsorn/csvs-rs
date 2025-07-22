@@ -1,6 +1,5 @@
-use crate::error::{Error, Result};
-use crate::{Entry, IntoValue};
 use assert_json_diff::assert_json_eq;
+use csvs::{Entry, IntoValue, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;

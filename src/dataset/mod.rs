@@ -83,7 +83,7 @@ impl Dataset {
         update::update_record_stream(self, input)
     }
 
-    async fn print_record(self, query: Vec<Entry>) -> Result<()> {
+    pub async fn print_record(self, query: Vec<Entry>) -> Result<()> {
         select::print_record(self, query).await
     }
 }

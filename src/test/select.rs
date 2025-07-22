@@ -1,12 +1,11 @@
 use assert_json_diff::assert_json_eq;
 use serde_json::Value;
 extern crate dir_diff;
-use crate::{
-    error::{Error, Result},
-    select::select_record,
-    test::read_record,
-    Entry, IntoValue,
+use csvs::{
+    Result,
+    Entry, IntoValue, Dataset
 };
+use super::read_record;
 use serde::{Deserialize, Serialize};
 use std::fs;
 
@@ -40,7 +39,9 @@ async fn select_test() -> Result<()> {
             queries.clone().into_iter().map(|query| query.into_value())
         );
 
-        let entries = select_record(initial_path.to_owned(), queries).await?;
+        let dataset = Dataset::new(&initial_path.to_owned());
+
+        let entries = dataset.select_record(queries).await?;
 
         let entries_json: Vec<Value> = entries.iter().map(|i| i.clone().into_value()).collect();
 

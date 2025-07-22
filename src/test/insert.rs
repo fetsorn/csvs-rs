@@ -1,6 +1,6 @@
 extern crate dir_diff;
-use crate::error::{Error, Result};
-use crate::{insert_record, test::read_record, Entry};
+use crate::{Entry, Result, Dataset};
+use super::read_record;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use temp_dir::TempDir;
@@ -48,7 +48,9 @@ async fn insert_test() -> Result<()> {
             .map(|query| read_record(&query).try_into())
             .collect::<Result<Vec<Entry>>>()?;
 
-        insert_record(temp_path.path().to_owned(), queries).await;
+        let dataset = Dataset::new(&temp_path.path().to_owned());
+
+        dataset.insert_record(queries).await;
 
         if dir_diff::is_different(temp_path.path(), expected_path)? {
             for file_entry in fs::read_dir(temp_path.path())? {

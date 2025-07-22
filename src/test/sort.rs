@@ -1,10 +1,6 @@
-use crate::{
-    error::{Error, Result},
-    schema::{get_nesting_level, sort_nesting_ascending, sort_nesting_descending},
-    test::read_record,
-    Entry, Schema,
-};
+use super::read_record;
 use assert_json_diff::assert_json_eq;
+use csvs::{Entry, Result, Schema};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
@@ -26,9 +22,9 @@ fn level_test() -> Result<()> {
     for test in tests.iter() {
         let schema_record = read_record(&test.schema);
 
-        let schema = schema_record.try_into()?;
+        let schema: Schema = schema_record.try_into()?;
 
-        let level = get_nesting_level(&schema, &test.initial);
+        let level = schema.get_nesting_level(&test.initial);
 
         assert_eq!(level, test.expected);
     }
@@ -53,11 +49,11 @@ fn sort_descending_test() -> Result<()> {
     for test in tests.iter() {
         let schema_record = read_record(&test.schema);
 
-        let schema = schema_record.try_into()?;
+        let schema: Schema = schema_record.try_into()?;
 
         let mut sorted = test.initial.clone();
 
-        sorted.sort_by(sort_nesting_descending(schema));
+        sorted.sort_by(schema.sort_nesting_descending());
 
         assert_eq!(sorted, test.expected);
     }
@@ -75,11 +71,11 @@ fn sort_ascending_test() -> Result<()> {
     for test in tests.iter() {
         let schema_record = read_record(&test.schema);
 
-        let schema = schema_record.try_into()?;
+        let schema: Schema = schema_record.try_into()?;
 
         let mut sorted = test.initial.clone();
 
-        sorted.sort_by(sort_nesting_ascending(schema));
+        sorted.sort_by(schema.sort_nesting_ascending());
 
         assert_eq!(sorted, test.expected);
     }

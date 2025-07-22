@@ -1,10 +1,6 @@
-use crate::{
-    error::{Error, Result},
-    record::mow::mow,
-    test::read_record,
-    Entry, Grain, IntoValue,
-};
+use super::read_record;
 use assert_json_diff::assert_json_eq;
+use csvs::{Entry, Grain, IntoValue, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::fs;
@@ -26,7 +22,7 @@ fn mow_test() -> Result<()> {
     for test in tests.iter() {
         let entry: Entry = read_record(&test.initial).try_into()?;
 
-        let result: Vec<Grain> = mow(&entry, &test.trait_, &test.thing);
+        let result: Vec<Grain> = entry.mow(&test.trait_, &test.thing);
 
         let result_json: Vec<Value> = result.into_iter().map(|i| i.into_value()).collect();
 
