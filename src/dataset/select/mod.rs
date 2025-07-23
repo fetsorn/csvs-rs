@@ -157,7 +157,7 @@ pub fn select_record_stream<S: Stream<Item = Result<Entry>>>(
 
                     // TODO move to leader stream
                     let base_new = match &state.entry {
-                        None => panic!("unreachable"),
+                        None => continue,
                         Some(e) => if e.base == query.base {
                             &e.base
                         } else {
